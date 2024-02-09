@@ -157,10 +157,16 @@ public static class CoordUtility
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IndexFor<GridArray> GoRight(this IndexFor<GridArray> gridIndex)
-        => new (gridIndex + 1);
+        => gridIndex + 1;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IndexFor<GridArray> GoLeft(this IndexFor<GridArray> gridIndex)
+        => gridIndex + -1;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IndexFor<GridArray> GoDown(this IndexFor<GridArray> gridIndex)
-        => new (gridIndex + GridArray.Width);
+        => gridIndex + GridArray.Width;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IndexFor<GridArray> GoUp(this IndexFor<GridArray> gridIndex)
+        => gridIndex + -GridArray.Width;
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int4 GetCornerValues(this GridArray caveGrid, Int2For<GridArray> coord)

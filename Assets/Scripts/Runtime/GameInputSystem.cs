@@ -103,12 +103,10 @@ partial struct GameInputSystem : ISystem
             } else if (Input.GetKeyDown(KeyCode.Mouse1))
             {
                 float3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
-                var snappedPos = mousePos.xy * 2 + new float2(1, -1);
-                var navigationGridIndex = (int)snappedPos.x + (int)-snappedPos.y * NavigationSystem.navWidth;
                 state.EntityManager.SetComponentEnabled<PathGoal>(SystemAPI.QueryBuilder().WithDisabled<PathGoal>().WithAll<Selectable>().Build(), true);
                 foreach (var (walkState, selectState) in SystemAPI.Query<RefRW<PathGoal>, EnabledRefRW<Selectable>>().WithAll<Selectable>())
                 {
-                    walkState.ValueRW.nodeIndex = navigationGridIndex;
+                    walkState.ValueRW.nodeIndex = NavigationExtensions.WorldPosToNavigationIndex(mousePos.xy);
                     selectState.ValueRW = false;
                 }
             }

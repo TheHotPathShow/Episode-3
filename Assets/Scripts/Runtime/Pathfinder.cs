@@ -10,12 +10,12 @@ using UnityEngine;
 
 public struct PathGoal : IComponentData, IEnableableComponent
 {
-    public GridNodeIndex nodeIndex;
+    public IndexFor<NavigationSystem> nodeIndex;
 }
 
 public struct PathMoveState : IComponentData, IEnableableComponent
 {
-    public GridNodeIndex From, To;
+    public IndexFor<NavigationSystem> From, To;
     public float T; // 0..1
 }
 
@@ -25,9 +25,9 @@ public struct PathMoveState : IComponentData, IEnableableComponent
 [InternalBufferCapacity(0)]
 public struct PathNode : IBufferElementData, IEnableableComponent
 {
-    public GridNodeIndex nodeIndex;
-    public static implicit operator PathNode(GridNodeIndex n) => new PathNode { nodeIndex = n };
-    public static implicit operator GridNodeIndex(PathNode n) => n.nodeIndex;
+    public IndexFor<NavigationSystem> nodeIndex;
+    public static implicit operator PathNode(IndexFor<NavigationSystem> n) => new PathNode { nodeIndex = n };
+    public static implicit operator IndexFor<NavigationSystem>(PathNode n) => n.nodeIndex;
 }
 
 [BurstCompile]
@@ -42,8 +42,8 @@ public struct Pathfinder : IDisposable
     NativeArray<NodeState> nodeStates;
     NativeArray<int> pathCosts; // The total cost of the shortest path to each node from the start that we've found so far. undefined for unvisited nodes
     NativeArray<int> pathNodeCounts; // The number of nodes in the path from start to each node (including start and this node). undefined for unvisited nodes
-    NativeArray<GridNodeIndex> prevNodes; // Index of the previous node in the shortest path from the start to each node. undefined for unvisited nodes
-    NativeList<GridNodeIndex> candidateNodes;
+    NativeArray<IndexFor<NavigationSystem>> prevNodes; // Index of the previous node in the shortest path from the start to each node. undefined for unvisited nodes
+    NativeList<IndexFor<NavigationSystem>> candidateNodes;
     const int MOVE_COST_LEFTRIGHT = 2;
     const int MOVE_COST_UP = 3;
     const int MOVE_COST_DOWN = 1;
@@ -53,8 +53,8 @@ public struct Pathfinder : IDisposable
         nodeStates = new NativeArray<NodeState>(nodeCount, allocator, NativeArrayOptions.ClearMemory);
         pathCosts = new NativeArray<int>(nodeCount, allocator, NativeArrayOptions.UninitializedMemory);
         pathNodeCounts = new NativeArray<int>(nodeCount, allocator, NativeArrayOptions.UninitializedMemory);
-        prevNodes = new NativeArray<GridNodeIndex>(nodeCount, allocator, NativeArrayOptions.UninitializedMemory);
-        candidateNodes = new NativeList<GridNodeIndex>(nodeCount, allocator);
+        prevNodes = new NativeArray<IndexFor<NavigationSystem>>(nodeCount, allocator, NativeArrayOptions.UninitializedMemory);
+        candidateNodes = new NativeList<IndexFor<NavigationSystem>>(nodeCount, allocator);
     }
 
     public bool IsCreated => nodeStates.IsCreated;
@@ -77,7 +77,7 @@ public struct Pathfinder : IDisposable
         candidateNodes.Dispose();
     }
 
-    void ProcessNeighbor(GridNodeIndex currentNodeIndex, GridNodeIndex neighbor, int newCost)
+    void ProcessNeighbor(IndexFor<NavigationSystem> currentNodeIndex, IndexFor<NavigationSystem> neighbor, int newCost)
     {
         if (nodeStates[neighbor] == NodeState.Unvisited)
         {
@@ -111,13 +111,13 @@ public struct Pathfinder : IDisposable
     /// element will always be <paramref name="end"/>. The <paramref name="start"/> node will not be included in the
     /// list.</param>
     [BurstCompile]
-    public static void FindShortestPath(ref Pathfinder pathfinder,in NativeArray<NavigationSystem.NodeType> caveGrid, GridNodeIndex start, GridNodeIndex end,
+    public static void FindShortestPath(ref Pathfinder pathfinder,in NativeArray<NavigationSystem.NodeType> caveGrid, IndexFor<NavigationSystem> start, IndexFor<NavigationSystem> end,
         ref DynamicBuffer<PathNode> outPath)
     {
         pathfinder.FindShortestPath(caveGrid, start, end, ref outPath);
     }
 
-    void FindShortestPath(in NativeArray<NavigationSystem.NodeType> caveGrid, GridNodeIndex start, GridNodeIndex end, ref DynamicBuffer<PathNode> outPath)
+    void FindShortestPath(in NativeArray<NavigationSystem.NodeType> caveGrid, IndexFor<NavigationSystem> start, IndexFor<NavigationSystem> end, ref DynamicBuffer<PathNode> outPath)
     {
         outPath.Clear();
         
@@ -135,8 +135,8 @@ public struct Pathfinder : IDisposable
         Reset();
         pathCosts[start] = 0;
         pathNodeCounts[start] = 0;
-        prevNodes[start] = -1;
-        candidateNodes.AddNoResize(start);
+        prevNodes[start] = new IndexFor<NavigationSystem>(-1);
+        candidateNodes.AddNoResize(new IndexFor<NavigationSystem>(start));
         while (!candidateNodes.IsEmpty)
         {
             // Find the candidate node with the shortest overall path length.
@@ -155,7 +155,7 @@ public struct Pathfinder : IDisposable
             if (Hint.Unlikely(nodeStates[end] == NodeState.Seen && pathCosts[end] == nextCandidatePathCost))
             {
                 outPath.Capacity = pathNodeCounts[end];
-                GridNodeIndex n = end;
+                IndexFor<NavigationSystem> n = end;
                 do
                 {
                     if (caveGrid[n].IsGround()) 
@@ -164,7 +164,7 @@ public struct Pathfinder : IDisposable
                 } while (n != start);
                 return;
             }
-            GridNodeIndex currentNodeIndex = candidateNodes[nextCandidateIndex];
+            IndexFor<NavigationSystem> currentNodeIndex = candidateNodes[nextCandidateIndex];
             candidateNodes.RemoveAtSwapBack(nextCandidateIndex);
             // The current node's path length & previous node are now correct.
             nodeStates[currentNodeIndex] = NodeState.Visited;
@@ -175,10 +175,10 @@ public struct Pathfinder : IDisposable
             int currentLength = pathCosts[currentNodeIndex];
             var x = currentNodeIndex % NavigationSystem.navWidth;
             var y = currentNodeIndex / NavigationSystem.navWidth;
-            GridNodeIndex neighborL = currentNodeIndex - 1;
-            GridNodeIndex neighborR = currentNodeIndex + 1;
-            GridNodeIndex neighborU = currentNodeIndex - NavigationSystem.navWidth;
-            GridNodeIndex neighborD = currentNodeIndex + NavigationSystem.navWidth;
+            var neighborL = currentNodeIndex.GoHalfLeft();
+            var neighborR = currentNodeIndex.GoHalfRight();
+            var neighborU = currentNodeIndex.GoHalfUp();
+            var neighborD = currentNodeIndex.GoHalfDown();
 
             // left
             if (x > 0 && !caveGrid[neighborL].IsObstructed())
@@ -192,7 +192,7 @@ public struct Pathfinder : IDisposable
                 // loop down until hit mid landing
                 var jumpTo = neighborR;
                 while (caveGrid[jumpTo] is not NavigationSystem.NodeType.GroundLedgeL and not NavigationSystem.NodeType.JumpDown)
-                    jumpTo -= NavigationSystem.navWidth;
+                    jumpTo = jumpTo.GoHalfUp();
                 ProcessNeighbor(currentNodeIndex, jumpTo, currentLength + MOVE_COST_UP);
             }
             else if (caveGrid[currentNodeIndex] is NavigationSystem.NodeType.GroundLandingR or NavigationSystem.NodeType.GroundLandingLR)
@@ -200,7 +200,7 @@ public struct Pathfinder : IDisposable
                 // loop down until hit mid landing
                 var jumpTo = neighborL;
                 while (caveGrid[jumpTo] is not NavigationSystem.NodeType.GroundLedgeR and not NavigationSystem.NodeType.JumpDown)
-                    jumpTo -= NavigationSystem.navWidth;
+                    jumpTo = jumpTo.GoHalfUp();
                 ProcessNeighbor(currentNodeIndex, jumpTo, currentLength + MOVE_COST_UP);
             }
             else
@@ -237,26 +237,62 @@ public struct Pathfinder : IDisposable
 
 static class NavigationExtensions
 {
+    public static IndexFor<NavigationSystem> LocalTransformToNavigationIndex(this LocalTransform lt) 
+        => WorldPosToNavigationIndex(lt.Position.xy - 1f);
+    
+    public static IndexFor<NavigationSystem> WorldPosToNavigationIndex(float2 pos)
+    {
+        pos -= new float2(-.5f, .5f);
+        var val = new IndexFor<NavigationSystem> ((int)math.round(pos.x * 2) + (-((int)math.round(pos.y * 2)) * NavigationSystem.navWidth));
+        // Debug.Log((int)val + " " + pos);
+        return val;
+    }
+
+    public static float2 NavigationIndexToLocalTransformPos(IndexFor<NavigationSystem> index) 
+        => new ((index % NavigationSystem.navWidth) * 0.5f, -((index / (float)NavigationSystem.navWidth) * 0.5f));
+    
+    public static IndexFor<NavigationSystem> ToNavigationIndex(this Int2For<TileArray> tilePos) 
+        => new ((tilePos.X * 2) + (-tilePos.Y * 2 * NavigationSystem.navWidth));
+    
+    public static IndexFor<NavigationSystem> GoHalfRight(this IndexFor<NavigationSystem> index) 
+        => index + 1;
+    public static IndexFor<NavigationSystem> GoFullRight(this IndexFor<NavigationSystem> index) 
+        => index + 2;
+    public static IndexFor<NavigationSystem> GoHalfLeft(this IndexFor<NavigationSystem> index)
+        => index + -1;
+    public static IndexFor<NavigationSystem> GoFullLeft(this IndexFor<NavigationSystem> index)
+        => index + -2;
+    public static IndexFor<NavigationSystem> GoHalfDown(this IndexFor<NavigationSystem> index)
+        => index + NavigationSystem.navWidth;
+    public static IndexFor<NavigationSystem> GoFullDown(this IndexFor<NavigationSystem> index)
+        => index + NavigationSystem.navWidth * 2;
+    public static IndexFor<NavigationSystem> GoHalfUp(this IndexFor<NavigationSystem> index)
+        => index + -NavigationSystem.navWidth;
+    public static IndexFor<NavigationSystem> GoFullUp(this IndexFor<NavigationSystem> index)
+        => index + -NavigationSystem.navWidth * 2;
+    
     public struct NavigationIndexes
     {
-        public int gridTL, gridTC, gridTR;
-        public int gridCL, gridCC, gridCR;
-        public int gridBL, gridBC, gridBR;
+        public IndexFor<NavigationSystem> gridTL, gridTC, gridTR;
+        public IndexFor<NavigationSystem> gridCL, gridCC, gridCR;
+        public IndexFor<NavigationSystem> gridBL, gridBC, gridBR;
         
         public static NavigationIndexes FromTilePos(Int2For<TileArray> tilePos)
         {
-            var gridIndex = (tilePos.X * 2) + (-tilePos.Y * 2 * NavigationSystem.navWidth);
+            var gridIndex = ToNavigationIndex(tilePos);
             return new NavigationIndexes
             {
                 gridTL = gridIndex,
-                gridTC = gridIndex + 1,
-                gridTR = gridIndex + 2,
-                gridCL = gridIndex + NavigationSystem.navWidth,
-                gridCC = gridIndex + NavigationSystem.navWidth + 1,
-                gridCR = gridIndex + NavigationSystem.navWidth + 2,
-                gridBL = gridIndex + NavigationSystem.navWidth * 2,
-                gridBC = gridIndex + NavigationSystem.navWidth * 2 + 1,
-                gridBR = gridIndex + NavigationSystem.navWidth * 2 + 2
+                gridTC = gridIndex.GoHalfRight(),
+                gridTR = gridIndex.GoFullRight(),
+                
+                gridCL = gridIndex.GoHalfDown(),
+                gridCC = gridIndex.GoHalfDown().GoHalfRight(),
+                gridCR = gridIndex.GoHalfDown().GoFullRight(),
+                
+                gridBL = gridIndex.GoFullDown(),
+                gridBC = gridIndex.GoFullDown().GoHalfRight(),
+                gridBR = gridIndex.GoFullDown().GoFullRight()
             };
         }
     }
@@ -657,8 +693,10 @@ partial struct FindPathsJob : IJobEntity
     void Execute(Entity entity, in PathGoal goal, in LocalTransform transform)
     {
         var pathNodes = PathNodeLookup[entity];
+        // var startNodeIndex = transform.LocalTransformToNavigationIndex();
         var snappedPos = transform.Position.xy * 2 + new float2(1, -1);
-        GridNodeIndex startNodeIndex = (int)snappedPos.x + (int)-snappedPos.y * NavigationSystem.navWidth;
+        IndexFor<NavigationSystem> startNodeIndex =
+            new((int)snappedPos.x + (int)-snappedPos.y * NavigationSystem.navWidth);
         Pathfinder.FindShortestPath(ref Finder, NavGrid, startNodeIndex, goal.nodeIndex, ref pathNodes);
         if (pathNodes.IsEmpty)
         {
@@ -696,11 +734,11 @@ partial struct PathMoveJob : IJobEntity
         // Advance the current move.
         // The current assumption is that a path is always valid once it's been computed; otherwise we would
         // have to handle the case here where the destination node is no longer accessible.
-        GridNodeIndex fromNodeIndex = moveState.ValueRO.From;
-        GridNodeIndex toNodeIndex = moveState.ValueRO.To;
+        var fromNodeIndex = moveState.ValueRO.From;
+        var toNodeIndex = moveState.ValueRO.To;
         
-        var toNodePos = new float3((toNodeIndex % NavigationSystem.navWidth)-1, (-toNodeIndex / NavigationSystem.navWidth)+1, -10) * 0.5f;
-        var fromNodePos = new float3((fromNodeIndex % NavigationSystem.navWidth)-1, (-fromNodeIndex / NavigationSystem.navWidth)+1, -10) * 0.5f;
+        var toNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(toNodeIndex), -10);
+        var fromNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(fromNodeIndex), -10) * 0.5f;
         var fromNodeJumpedPos = new float3(math.lerp(fromNodePos.x,toNodePos.x,0.25f), math.max(fromNodePos.y,toNodePos.y)+.7f, fromNodePos.z);
         var distanceBetweenNodes = math.distance(toNodePos, fromNodeJumpedPos);
         distanceBetweenNodes += math.distance(fromNodeJumpedPos, fromNodePos);
