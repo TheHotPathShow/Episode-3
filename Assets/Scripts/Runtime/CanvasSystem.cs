@@ -61,6 +61,7 @@ partial struct CanvasSetupSystem : ISystem
     {
         // If canvas needs update
         var documentReference = SystemAPI.ManagedAPI.GetSingleton<CanvasDocumentReference>();
+#if UNITY_EDITOR
         if (state.WorldUnmanaged.Flags == WorldFlags.Editor) {
             var singleton = SystemAPI.ManagedAPI.GetComponent<Singleton>(state.SystemHandle);
             if (documentReference.Equals(singleton.LastDocument))
@@ -68,6 +69,7 @@ partial struct CanvasSetupSystem : ISystem
             singleton.LastDocument = documentReference;
         }
         else
+#endif
         {
             state.Enabled = false;
         }
