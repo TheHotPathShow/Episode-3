@@ -217,8 +217,8 @@ public struct Pathfinder : IDisposable
                 // loop down until hit mid landing
                 var jumpTo = neighborD;
                 while (caveGrid[jumpTo] is not NavigationSystem.NodeType.GroundLandingMid) 
-                    jumpTo += NavigationSystem.navWidth;
-                jumpTo += jumpModeIsLeft ? -1 : 1;
+                    jumpTo = jumpTo.GoHalfDown();
+                jumpTo = jumpModeIsLeft ? jumpTo.GoHalfLeft() : jumpTo.GoHalfRight();
                 ProcessNeighbor(currentNodeIndex, jumpTo, currentLength + MOVE_COST_DOWN);
             }
             else 
@@ -238,19 +238,19 @@ public struct Pathfinder : IDisposable
 static class NavigationExtensions
 {
     public static IndexFor<NavigationSystem> LocalTransformToNavigationIndex(this LocalTransform lt) 
-        => WorldPosToNavigationIndex(lt.Position.xy - 1f);
+        => WorldPosToNavigationIndex(lt.Position.xy);
     
     public static IndexFor<NavigationSystem> WorldPosToNavigationIndex(float2 pos)
     {
         pos -= new float2(-.5f, .5f);
-        var val = new IndexFor<NavigationSystem> ((int)math.round(pos.x * 2) + (-((int)math.round(pos.y * 2)) * NavigationSystem.navWidth));
+        var val = new IndexFor<NavigationSystem> ((int)math.round(pos.x * 2) + (-((int)math.round(pos.y * 2)) * NavigationSystem.navWidth)); 
         // Debug.Log((int)val + " " + pos);
         return val;
     }
 
     public static float2 NavigationIndexToLocalTransformPos(IndexFor<NavigationSystem> index) 
-        => new ((index % NavigationSystem.navWidth) * 0.5f, -((index / (float)NavigationSystem.navWidth) * 0.5f));
-    
+        => new float2((index % NavigationSystem.navWidth) * 0.5f, -((index / (float)NavigationSystem.navWidth) * 0.5f)) + new float2(-.5f, .66f);
+
     public static IndexFor<NavigationSystem> ToNavigationIndex(this Int2For<TileArray> tilePos) 
         => new ((tilePos.X * 2) + (-tilePos.Y * 2 * NavigationSystem.navWidth));
     
@@ -693,10 +693,7 @@ partial struct FindPathsJob : IJobEntity
     void Execute(Entity entity, in PathGoal goal, in LocalTransform transform)
     {
         var pathNodes = PathNodeLookup[entity];
-        // var startNodeIndex = transform.LocalTransformToNavigationIndex();
-        var snappedPos = transform.Position.xy * 2 + new float2(1, -1);
-        IndexFor<NavigationSystem> startNodeIndex =
-            new((int)snappedPos.x + (int)-snappedPos.y * NavigationSystem.navWidth);
+        var startNodeIndex = transform.LocalTransformToNavigationIndex();
         Pathfinder.FindShortestPath(ref Finder, NavGrid, startNodeIndex, goal.nodeIndex, ref pathNodes);
         if (pathNodes.IsEmpty)
         {
@@ -737,8 +734,8 @@ partial struct PathMoveJob : IJobEntity
         var fromNodeIndex = moveState.ValueRO.From;
         var toNodeIndex = moveState.ValueRO.To;
         
-        var toNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(toNodeIndex), -10);
-        var fromNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(fromNodeIndex), -10) * 0.5f;
+        var toNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(toNodeIndex), -5);
+        var fromNodePos = new float3(NavigationExtensions.NavigationIndexToLocalTransformPos(fromNodeIndex), -5);
         var fromNodeJumpedPos = new float3(math.lerp(fromNodePos.x,toNodePos.x,0.25f), math.max(fromNodePos.y,toNodePos.y)+.7f, fromNodePos.z);
         var distanceBetweenNodes = math.distance(toNodePos, fromNodeJumpedPos);
         distanceBetweenNodes += math.distance(fromNodeJumpedPos, fromNodePos);
