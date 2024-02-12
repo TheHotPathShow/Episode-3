@@ -179,12 +179,12 @@ public struct Pathfinder : IDisposable
             var neighborR = currentNodeIndex.GoHalfRight();
             var neighborU = currentNodeIndex.GoHalfUp();
             var neighborD = currentNodeIndex.GoHalfDown();
-
+            
             // left
-            if (x > 0 && !caveGrid[neighborL].IsObstructed())
+            if (x > 0 && !caveGrid[neighborL].IsObstructed() && caveGrid[currentNodeIndex] is not NavigationSystem.NodeType.JumpDown)
                 ProcessNeighbor(currentNodeIndex, neighborL, currentLength + MOVE_COST_LEFTRIGHT);
             // right
-            if (x < NavigationSystem.navWidth - 1 && !caveGrid[neighborR].IsObstructed())
+            if (x < NavigationSystem.navWidth - 1 && !caveGrid[neighborR].IsObstructed() && caveGrid[currentNodeIndex] is not NavigationSystem.NodeType.JumpDown)
                 ProcessNeighbor(currentNodeIndex, neighborR, currentLength + MOVE_COST_LEFTRIGHT);
             
             if (caveGrid[currentNodeIndex] is NavigationSystem.NodeType.GroundLandingL or NavigationSystem.NodeType.GroundLandingLR)
@@ -249,7 +249,8 @@ static class NavigationExtensions
     }
 
     public static float2 NavigationIndexToLocalTransformPos(IndexFor<NavigationSystem> index) 
-        => new float2((index % NavigationSystem.navWidth) * 0.5f, -((index / (float)NavigationSystem.navWidth) * 0.5f)) + new float2(-.5f, .66f);
+        // ReSharper disable once PossibleLossOfFraction - On purpose :)
+        => new float2((index % NavigationSystem.navWidth) * 0.5f, -((index / NavigationSystem.navWidth) * 0.5f)) + new float2(-.5f, .5f);
 
     public static IndexFor<NavigationSystem> ToNavigationIndex(this Int2For<TileArray> tilePos) 
         => new ((tilePos.X * 2) + (-tilePos.Y * 2 * NavigationSystem.navWidth));
@@ -348,6 +349,7 @@ public partial struct NavigationSystem : ISystem, ISystemStartStop
         GroundLandingR,
         GroundLandingLR,
         GroundLandingMid,
+        SideWays,
         JumpDown,
         JumpUpDown,
     }
@@ -448,6 +450,7 @@ public partial struct NavigationSystem : ISystem, ISystemStartStop
                     NodeType.Air => (Vector4)new Color(0.27f, 0.23f, 0.36f) ,
                     NodeType.Obstructed => (Vector4)new Color(0.39f, 0.24f, 0.19f),
                     NodeType.JumpDown => (Vector4)Color.yellow,
+                    NodeType.SideWays => (Vector4)new Color(1f, 0.54f, 0.06f),
                     NodeType.JumpUpDown => (Vector4)Color.cyan,
                     _ => (Vector4)Color.clear
                 };
@@ -610,7 +613,7 @@ public partial struct NavigationSystem : ISystem, ISystemStartStop
                 if (tileEntity != Entity.Null && !SystemAPI.HasComponent<ConstructionSite>(tileEntity))
                     m_NavigationGrid.SetNavigation(ref navIndexes,
                         NodeType.Air, NodeType.JumpDown, NodeType.Air,
-                        NodeType.JumpDown, NodeType.Ground, NodeType.JumpDown,
+                        NodeType.SideWays, NodeType.Ground, NodeType.SideWays,
                         NodeType.Air, NodeType.JumpDown, NodeType.Air);
 
             }
@@ -627,9 +630,9 @@ public partial struct NavigationSystem : ISystem, ISystemStartStop
                 var neighborD = navIndex + navWidth;
                 if (neighborU < 0 || neighborD >= m_NavigationGrid.Length) continue;
                 if (m_NavigationGrid[current+(isLeft?-1:1)] == NodeType.Air) // one nodes away
-                    m_NavigationGrid[current+(isLeft?-1:1)] = NodeType.JumpDown;
+                    m_NavigationGrid[current+(isLeft?-1:1)] = NodeType.SideWays;
                 if (m_NavigationGrid[current+(isLeft?-2:2)] == NodeType.Air) // two nodes away
-                    m_NavigationGrid[current+(isLeft?-2:2)] = NodeType.JumpDown;
+                    m_NavigationGrid[current+(isLeft?-2:2)] = NodeType.SideWays;
 
                 var longJumpInvalid = false;
                 while (m_NavigationGrid[neighborU] is NodeType.Air or NodeType.JumpDown or NodeType.GroundLedgeL or NodeType.GroundLedgeR or NodeType.GroundLandingL or NodeType.GroundLandingR
