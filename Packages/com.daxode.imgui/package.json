@@ -1,0 +1,13 @@
+﻿{
+  "name": "com.daxode.imgui",
+  "version": "1.0.0",
+  "description": "This adds the ability to use Dear IMGUI with Unity's Data-oriented Tech Stack",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Daxode/ECS-Workshop.git"
+  },
+  
+  "dependencies": {
+    "com.unity.mathematics": "1.3.1"
+  }
+}

@@ -30,12 +30,12 @@ partial struct GameInputSystem : ISystem
         var constructionSites = SystemAPI.GetSingletonBuffer<ConstructionSiteElement>();
 
         ref var cursorSelection = ref SystemAPI.GetSingletonRW<CursorSelection>().ValueRW;
-        ref var cursorToDraw = ref cursorSelection.cursorToDraw;
+        ref var cursorToDraw = ref cursorSelection.Mode;
 
-        if (Input.GetKeyDown(KeyCode.Mouse1) && cursorToDraw.IsOutline())
-            cursorToDraw.SetDefault();
+        if (Input.GetKeyDown(KeyCode.Mouse1) && cursorToDraw == CursorSelection.CursorMode.DebugDraw)
+            cursorToDraw = CursorSelection.CursorMode.Select;
         
-        if (Input.GetKeyDown(KeyCode.Mouse0) && cursorToDraw.IsOutline())
+        if (Input.GetKeyDown(KeyCode.Mouse0) && cursorToDraw == CursorSelection.CursorMode.Build)
         {
             // Get the tile index
             float3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
@@ -46,52 +46,51 @@ partial struct GameInputSystem : ISystem
                 var corners = caveGrid.GetCornerValues(CoordUtility.WorldPosToGridPos(mousePos.xy));
                 corners = 1 - (int4)math.saturate(corners);
                 var marchSetIndex = corners.x | (corners.y << 1) | (corners.z << 2) | (corners.w << 3);
-                if ((marchSetIndex == 3 && cursorToDraw is CursorSelection.CursorToDraw.StockpileOutline or CursorSelection.CursorToDraw.WorkshopOutline) 
-                    || marchSetIndex == 0 && cursorToDraw is CursorSelection.CursorToDraw.LadderOutline)
-                {
-                    var constructionIndex = (cursorToDraw - CursorSelection.CursorToDraw.LadderOutline);
-                    var constructionSiteEntity = state.EntityManager.Instantiate(constructionSites[constructionIndex].constructionSite);
-                    SystemAPI.SetComponent(constructionSiteEntity, LocalTransform.FromPosition(new float3(math.round(mousePos.xy), -2)));
-                    caveTiles[tileIndex] = constructionSiteEntity;
-
-                    // deselect the cursor
-                    cursorToDraw.SetDefault();
-                }
+                // if ((marchSetIndex == 3 && cursorToDraw is CursorSelection.CursorToDraw.StockpileOutline or CursorSelection.CursorToDraw.WorkshopOutline) 
+                //     || marchSetIndex == 0 && cursorToDraw is CursorSelection.CursorToDraw.LadderOutline)
+                // {
+                //     var constructionIndex = (cursorToDraw - CursorSelection.CursorToDraw.LadderOutline);
+                //     var constructionSiteEntity = state.EntityManager.Instantiate(constructionSites[constructionIndex].constructionSite);
+                //     SystemAPI.SetComponent(constructionSiteEntity, LocalTransform.FromPosition(new float3(math.round(mousePos.xy), -2)));
+                //     caveTiles[tileIndex] = constructionSiteEntity;
+                //
+                //     // deselect the cursor
+                //     cursorToDraw.SetDefault();
+                // }
             }
         }
         
         // Queue the grid rock to be destroyed
-        if (Input.GetKeyDown(KeyCode.Mouse0) && cursorToDraw.IsDestroy())
-        {
-            // Get the grid index
-            float3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
-            var (snappedPos, snappedToTile) = CoordUtility.SnapToTileOrGrid(mousePos.xy);
+        // if (Input.GetKeyDown(KeyCode.Mouse0) && cursorToDraw.IsDestroy())
+        // {
+        //     // Get the grid index
+        //     float3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
+        //     var (snappedPos, snappedToTile) = CoordUtility.SnapToTileOrGrid(mousePos.xy);
+        //
+        //     if (snappedToTile)
+        //     {
+        //         var tileIndex = CoordUtility.WorldPosToTileIndex(snappedPos);
+        //         if (tileIndex >= 0 && tileIndex < caveTiles.Length && caveTiles[tileIndex] != Entity.Null) {
+        //             if (SystemAPI.HasComponent<ConstructionSite>(caveTiles[tileIndex]))
+        //             {
+        //                 state.EntityManager.DestroyEntity(caveTiles[tileIndex]);
+        //                 caveTiles[tileIndex] = Entity.Null;
+        //             }
+        //         }
+        //     }
+        //     else
+        //     {
+        //         var gridIndex = CoordUtility.WorldPosToGridIndex(snappedPos);
+        //         if (gridIndex >= 0 && gridIndex < caveGrid.Length && caveGrid[gridIndex] != CaveMaterialType.Air) {
+        //             var gridLockPrefab = SystemAPI.GetSingleton<MarchSquareData>().gridLockPrefab;
+        //             var gridLockEntity = state.EntityManager.Instantiate(gridLockPrefab);
+        //             SystemAPI.SetComponent(gridLockEntity, 
+        //                 LocalTransform.FromPosition(new float3(CoordUtility.SnapWorldPosToGridPos(mousePos.xy), -2)));
+        //         }
+        //     }
+        // }
 
-            if (snappedToTile)
-            {
-                var tileIndex = CoordUtility.WorldPosToTileIndex(snappedPos);
-                if (tileIndex >= 0 && tileIndex < caveTiles.Length && caveTiles[tileIndex] != Entity.Null) {
-                    if (SystemAPI.HasComponent<ConstructionSite>(caveTiles[tileIndex]))
-                    {
-                        state.EntityManager.DestroyEntity(caveTiles[tileIndex]);
-                        caveTiles[tileIndex] = Entity.Null;
-                    }
-                }
-            }
-            else
-            {
-                var gridIndex = CoordUtility.WorldPosToGridIndex(snappedPos);
-                if (gridIndex >= 0 && gridIndex < caveGrid.Length && caveGrid[gridIndex] != CaveMaterialType.Air) {
-                    var gridLockPrefab = SystemAPI.GetSingleton<MarchSquareData>().gridLockPrefab;
-                    var gridLockEntity = state.EntityManager.Instantiate(gridLockPrefab);
-                    SystemAPI.SetComponent(gridLockEntity, 
-                        LocalTransform.FromPosition(new float3(CoordUtility.SnapWorldPosToGridPos(mousePos.xy), -2)));
-                }
-            }
-
-        }
-
-        if (cursorToDraw.IsSelected())
+        if (cursorToDraw == CursorSelection.CursorMode.Select)
         {
             if (Input.GetKeyDown(KeyCode.Mouse0))
             {
@@ -114,7 +113,7 @@ partial struct GameInputSystem : ISystem
         
         
         // draw on the cave grid
-        if ((Input.GetKey(KeyCode.Mouse0) || Input.GetKey(KeyCode.Mouse1)) && cursorToDraw.IsDrawn())
+        if ((Input.GetKey(KeyCode.Mouse0) || Input.GetKey(KeyCode.Mouse1)) && cursorToDraw == CursorSelection.CursorMode.DebugDraw)
         {
             float3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
             var i = CoordUtility.WorldPosToGridIndex(mousePos.xy);
