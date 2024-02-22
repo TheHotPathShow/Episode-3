@@ -8,26 +8,32 @@ namespace com.daxode.imgui
     {
         [SerializeField] private Shader shader;
         private Material material;
-        private ImGuiRenderPass m_ImGuiRenderPass;
+        private ImGuiRenderPass m_RenderPass;
 
         public override void Create()
         {
-            if (shader == null)
-            {
-                return;
-            }
-            material = CoreUtils.CreateEngineMaterial(shader);
-            m_ImGuiRenderPass = new ImGuiRenderPass(material);
-        
-            m_ImGuiRenderPass.renderPassEvent = RenderPassEvent.AfterRenderingSkybox;
+            // if (shader == null)
+            //     return;
+            material = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/ImGuiDrawShader"));
+            m_RenderPass = new ImGuiRenderPass(material);
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer,
             ref RenderingData renderingData)
         {
+            if (renderingData.cameraData.cameraType == CameraType.Game) 
+                renderer.EnqueuePass(m_RenderPass);
+        }
+        
+        public override void SetupRenderPasses(ScriptableRenderer renderer,
+            in RenderingData renderingData)
+        {
             if (renderingData.cameraData.cameraType == CameraType.Game)
             {
-                renderer.EnqueuePass(m_ImGuiRenderPass);
+                // Calling ConfigureInput with the ScriptableRenderPassInput.Color argument
+                // ensures that the opaque texture is available to the Render Pass.
+                // m_RenderPass.ConfigureInput(ScriptableRenderPassInput.Color);
+                m_RenderPass.SetTarget(renderer.cameraColorTargetHandle);
             }
         }
 

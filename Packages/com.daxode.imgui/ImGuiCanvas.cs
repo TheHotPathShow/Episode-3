@@ -46,7 +46,11 @@ namespace com.daxode.imgui
             // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
             // - Read 'docs/FONTS.md' for more instructions and details.
             // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-            io->Fonts->AddFontDefault();
+            // var fontConfig = ImFontConfig.DefaultFontConfig();
+            // fontConfig.SizePixels = 128.0f;
+            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 180.0f);
+            
+            // io->Fonts->AddFontDefault();
             //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
             //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
@@ -75,28 +79,28 @@ namespace com.daxode.imgui
             ImGui.NewFrame();
 
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            // if (show_demo_window)
-            //     ImGui.ShowDemoWindow(&show_demo_window);
+            if (show_demo_window)
+                 ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
 
+            // ImGui.SetNextWindowSize(new float2(2000, 1000), ImGuiCond.Always);
+            
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
-
-                ImGui.Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-                ImGui.Text("This is some useful text.");               // Display some text (you can use a format strings too)
-                ImGui.Checkbox("Demo Window", ref show_demo_window);      // Edit bools storing our window open/close state
-                ImGui.Checkbox("Another Window", ref show_another_window);
-
-                ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-                ImGui.ColorEdit3("clear color", ref clear_color); // Edit 3 floats representing a color
-
-                if (ImGui.Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
-                ImGui.SameLine();
-                ImGui.Text($"counter = {counter}");
-
-                ImGui.Text($"Application average {1000.0f / io->Framerate} ms/frame ({io->Framerate} FPS)");
-                ImGui.End();
+                // ImGui.Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+                // ImGui.Text("This is some useful text.");               // Display some text (you can use a format strings too)
+                // // ImGui.Checkbox("Demo Window", ref show_demo_window);      // Edit bools storing our window open/close state
+                // // ImGui.Checkbox("Another Window", ref show_another_window);
+                // //
+                // // ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                // // ImGui.ColorEdit3("clear color", ref clear_color); // Edit 3 floats representing a color
+                // //
+                // // if (ImGui.Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                // //     counter++;
+                // // ImGui.SameLine();
+                // // ImGui.Text($"counter = {counter}");
+                //
+                // ImGui.Text($"Application average {1000.0f / io->Framerate} ms/frame ({io->Framerate} FPS)");
+                // ImGui.End();
             }
 
             // 3. Show another simple window.
@@ -126,20 +130,20 @@ namespace com.daxode.imgui
             return; // 0
         }
 
-        ImGuiRenderPass m_ImGuiRenderPass;
-        [SerializeField] Shader shader;
-        void OnEnable()
-        {
-            m_ImGuiRenderPass = new ImGuiRenderPass(CoreUtils.CreateEngineMaterial(shader));
-            RenderPipelineManager.beginCameraRendering += OnCameraRender;
-        }
-        void OnDisable()
-        {
-            RenderPipelineManager.beginCameraRendering -= OnCameraRender;
-            m_ImGuiRenderPass.Dispose();
-        }
-        void OnCameraRender(ScriptableRenderContext ctx, Camera cam) 
-            => cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(m_ImGuiRenderPass);
+        // ImGuiRenderPass m_ImGuiRenderPass;
+        // [SerializeField] Shader shader;
+        // void OnEnable()
+        // {
+        //     m_ImGuiRenderPass = new ImGuiRenderPass(CoreUtils.CreateEngineMaterial(shader));
+        //     RenderPipelineManager.beginCameraRendering += OnCameraRender;
+        // }
+        // void OnDisable()
+        // {
+        //     RenderPipelineManager.beginCameraRendering -= OnCameraRender;
+        //     m_ImGuiRenderPass.Dispose();
+        // }
+        // void OnCameraRender(ScriptableRenderContext ctx, Camera cam) 
+        //     => cam.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(m_ImGuiRenderPass);
 
         static unsafe PlatformData* ImGui_ImplGlfw_GetBackendData() 
             => ImGui.GetCurrentContext() != null ? (PlatformData*)ImGui.GetIO()->BackendPlatformUserData : null;
@@ -149,6 +153,8 @@ namespace com.daxode.imgui
             public bool InstalledCallbacks;
             public int Window;
             public double Time;
+            public float2 LastValidMousePos;
+            public int MouseWindow;
         }
         
         // GLFW
@@ -167,7 +173,8 @@ namespace com.daxode.imgui
             // glfwGetFramebufferSize(bd->Window, &display_w, &display_h);
             io->DisplaySize = new float2(cam.pixelWidth, cam.pixelHeight);
             if (math.all(io->DisplaySize > 0))
-                io->DisplayFramebufferScale = new float2(display.x / io->DisplaySize.x, display.y / io->DisplaySize.y);
+                io->DisplayFramebufferScale = new float2(1f);
+            io->FontGlobalScale = 0.5f;
 
             // Setup time step
             // (Accept glfwGetTime() not returning a monotonically increasing value. Seems to happens on disconnecting peripherals and probably on VMs and Emscripten, see #6491, #6189, #6114, #3644)
@@ -176,12 +183,119 @@ namespace com.daxode.imgui
                 current_time = bd->Time + 0.00001f;
             io->DeltaTime = bd->Time > 0.0 ? (float)(current_time - bd->Time) : (float)(1.0f / 60.0f);
             bd->Time = current_time;
-
-            // ImGui_ImplGlfw_UpdateMouseData();
+            
+            ImGui_ImplGlfw_UpdateMouseData();
             // ImGui_ImplGlfw_UpdateMouseCursor();
 
             // Update game controllers (if enabled and available)
             // ImGui_ImplGlfw_UpdateGamepads();
+            
+            
+            // -ImGui_ImplGlfw_WindowFocusCallback
+            // -ImGui_ImplGlfw_CursorEnterCallback
+            // -ImGui_ImplGlfw_CursorPosCallback
+            ImGuiModFlags mods = 0;
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                mods |= ImGuiModFlags.Shift;
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                mods |= ImGuiModFlags.Ctrl;
+            if (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
+                mods |= ImGuiModFlags.Alt;
+            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonUp(0))
+                ImGui_ImplGlfw_MouseButtonCallback(ImGuiMouseButton.Left, Input.GetMouseButtonDown(0) ? (byte)1 : (byte)0, (int)mods);
+            if (Input.GetMouseButtonDown(1) || Input.GetMouseButtonUp(1))
+                ImGui_ImplGlfw_MouseButtonCallback(ImGuiMouseButton.Right, Input.GetMouseButtonDown(1) ? (byte)1 : (byte)0, (int)mods);
+            if (Input.GetMouseButtonDown(2) || Input.GetMouseButtonUp(2))
+                ImGui_ImplGlfw_MouseButtonCallback(ImGuiMouseButton.Middle, Input.GetMouseButtonDown(2) ? (byte)1 : (byte)0, (int)mods);
+            
+            if (Input.mouseScrollDelta.magnitude != 0.0f)
+                io->AddMouseWheelEvent(Input.mouseScrollDelta.x, Input.mouseScrollDelta.y);
+
+            if (Input.mousePosition.x >= 0 && Input.mousePosition.x <= io->DisplaySize.x &&
+                Input.mousePosition.y >= 0 && Input.mousePosition.y <= io->DisplaySize.y)
+            {
+                if (!HasEnteredAlready)
+                {
+                    ImGui_ImplGlfw_CursorEnterCallback(bd->Window, true);
+                    ImGui.GetIO()->AddFocusEvent(1);
+                    HasEnteredAlready = true;
+                }
+            } else if (HasEnteredAlready)
+            {
+                ImGui_ImplGlfw_CursorEnterCallback(bd->Window, false);
+                ImGui.GetIO()->AddFocusEvent(0);
+                HasEnteredAlready = false;
+            }
+            
+            // -ImGui_ImplGlfw_MouseButtonCallback
+            // -ImGui_ImplGlfw_ScrollCallback
+            // -ImGui_ImplGlfw_KeyCallback
+            // -ImGui_ImplGlfw_CharCallback
+            // -ImGui_ImplGlfw_MonitorCallback
+        }
+
+        bool HasEnteredAlready = false;
+        
+        static unsafe void ImGui_ImplGlfw_CursorEnterCallback(int window, bool entered)
+        {
+            var bd = ImGui_ImplGlfw_GetBackendData();
+            // if (bd->PrevUserCallbackCursorEnter != nullptr && ImGui_ImplGlfw_ShouldChainCallback(window))
+            //     bd->PrevUserCallbackCursorEnter(window, entered);
+
+            var io = ImGui.GetIO();
+            if (entered)
+            {
+                bd->MouseWindow = window;
+                io->AddMousePosEvent(bd->LastValidMousePos.x, bd->LastValidMousePos.y);
+            }
+            else if (bd->MouseWindow == window)
+            {
+                bd->LastValidMousePos = io->MousePos;
+                bd->MouseWindow = 0;
+                io->AddMousePosEvent(-float.MaxValue, -float.MaxValue);
+            }
+        }
+        
+        unsafe static void ImGui_ImplGlfw_MouseButtonCallback(ImGuiMouseButton button, byte pressedDown, int mods)
+        {
+            var bd = ImGui_ImplGlfw_GetBackendData();
+            // if (bd->PrevUserCallbackMousebutton != null && ImGui_ImplGlfw_ShouldChainCallback(window))
+            //     bd->PrevUserCallbackMousebutton(window, button, action, mods);
+
+            // ImGui_ImplGlfw_UpdateKeyModifiers(window);
+
+            Debug.Log($"Button: {button}, PressedDown: {pressedDown}");
+            
+            var io = ImGui.GetIO();
+            Debug.Log(io->MousePos);
+            if (button is >= 0 and < ImGuiMouseButton.COUNT)
+                io->AddMouseButtonEvent((int)button, pressedDown);
+        }
+        
+        enum ImGuiMouseButton : int
+        {
+            Left = 0,
+            Right = 1,
+            Middle = 2,
+            COUNT = 5
+        };
+        
+        unsafe static void ImGui_ImplGlfw_UpdateMouseData()
+        {
+            var bd = ImGui_ImplGlfw_GetBackendData();
+            var io = ImGui.GetIO();
+
+            // (those braces are here to reduce diff with multi-viewports support in 'docking' branch)
+            {
+                var window = bd->Window;
+                // (Optional) Set OS mouse position from Dear ImGui if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
+                // if (io->WantSetMousePos != 0)
+                //     glfwSetCursorPos(window, (double)io.MousePos.x, (double)io.MousePos.y);
+                
+                var mouse = ((float3) Input.mousePosition).xy;
+                bd->LastValidMousePos = mouse;
+                io->AddMousePosEvent(mouse.x, io->DisplaySize.y*1.25f-mouse.y);
+            }
         }
         
         unsafe void ImGui_ImplGlfw_InstallCallbacks()
@@ -242,7 +356,8 @@ namespace com.daxode.imgui
             io->BackendPlatformName = (char*) new NativeText("imgui_impl_glfw", Allocator.Persistent).GetUnsafePtr();
             io->BackendFlags |= ImGuiBackendFlags.HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
             io->BackendFlags |= ImGuiBackendFlags.HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
-
+            io->BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
+            
             bd->Window = cam.GetInstanceID();
             bd->Time = 0.0;
 
@@ -316,7 +431,7 @@ namespace com.daxode.imgui
 
             io->BackendPlatformName = null;
             io->BackendPlatformUserData = null;
-            io->BackendFlags &= ~(ImGuiBackendFlags.HasMouseCursors | ImGuiBackendFlags.HasSetMousePos | ImGuiBackendFlags.HasGamepad);
+            io->BackendFlags = 0;
             UnsafeUtility.Free(bd, Allocator.Persistent);
         }
         

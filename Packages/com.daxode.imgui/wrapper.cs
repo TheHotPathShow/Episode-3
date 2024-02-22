@@ -30,6 +30,14 @@ static class ImGui
 	[DllImport("cimgui", EntryPoint = "igEnd")]
 	public static extern void End();
 	
+	[DllImport("cimgui", EntryPoint = "igShowDemoWindow")]
+	public static extern unsafe void ShowDemoWindow(byte* p_open);
+	
+	[DllImport("cimgui", EntryPoint = "igPushItemWidth")]
+	public static extern void          PushItemWidth(float item_width);                                // push width of items for common large "item+label" widgets. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -FLT_MIN always align width to the right side).
+	[DllImport("cimgui", EntryPoint = "igPopItemWidth")]
+	public static extern void          PopItemWidth();
+	
 	public static unsafe void Begin(FixedString128Bytes anotherWindow) 
 		=> Begin((char*)anotherWindow.GetUnsafePtr());
 	public static unsafe void Begin(FixedString128Bytes anotherWindow, ref bool b) 
@@ -44,10 +52,10 @@ static class ImGui
 	[DllImport("cimgui", EntryPoint = "igText")]
 	static extern unsafe void Text(char* text);
 
-	public static unsafe void Checkbox(FixedString128Bytes demoWindow, ref bool p1)
-	=> Checkbox((char*)demoWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref p1));
+	public static unsafe bool Checkbox(FixedString128Bytes demoWindow, ref bool p1)
+	=> Checkbox((char*)demoWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref p1)) > 0;
 	[DllImport("cimgui", EntryPoint = "igCheckbox")]
-	static extern unsafe bool Checkbox(char* label, void* v);
+	static extern unsafe byte Checkbox(char* label, void* v);
 
 	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to) 
 		=> SliderFloat((char*)f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, (char*) new FixedString128Bytes("%.3").GetUnsafePtr(), 0);
@@ -87,7 +95,71 @@ static class ImGui
 	
 	[DllImport("cimgui", EntryPoint = "igDebugCheckVersionAndDataLayout")]
 	static extern unsafe bool DebugCheckVersionAndDataLayout(char* version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx); // This is called by IMGUI_CHECKVERSION() macro.
+	
+	[DllImport("cimgui", EntryPoint = "igPushStyleVar")]
+	public static extern unsafe void          PushStyleVar(ImGuiStyleVar idx, float val);                     // modify a style float variable. always use this if you modify the style after NewFrame().
+	[DllImport("cimgui", EntryPoint = "igPushStyleVar")]
+	public static extern unsafe void          PushStyleVar(ImGuiStyleVar idx, float2 val);             // modify a style ImVec2 variable. always use this if you modify the style after NewFrame().
+	[DllImport("cimgui", EntryPoint = "igSetNextWindowSize")]
+	public static extern unsafe void          SetNextWindowSize(float2 size, ImGuiCond cond = 0);                  // set next window size. set axis to 0.0f to force an auto-fit on this axis. call before Begin()
 }
+
+
+// Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
+// Represent a condition.
+// Important: Treat as a regular enum! Do NOT combine multiple values using binary operators! All the functions above treat 0 as a shortcut to ImGuiCond_Always.
+enum ImGuiCond
+{
+	None          = 0,        // No condition (always set the variable), same as _Always
+	Always        = 1 << 0,   // No condition (always set the variable), same as _None
+	Once          = 1 << 1,   // Set the variable once per runtime session (only the first call will succeed)
+	FirstUseEver  = 1 << 2,   // Set the variable if the object/window has no persistently saved data (no entry in .ini file)
+	Appearing     = 1 << 3,   // Set the variable if the object/window is appearing after being hidden/inactive (or the first time)
+};
+
+// Enumeration for PushStyleVar() / PopStyleVar() to temporarily modify the ImGuiStyle structure.
+// - The enum only refers to fields of ImGuiStyle which makes sense to be pushed/popped inside UI code.
+//   During initialization or between frames, feel free to just poke into ImGuiStyle directly.
+// - Tip: Use your programming IDE navigation facilities on the names in the _second column_ below to find the actual members and their description.
+//   In Visual Studio IDE: CTRL+comma ("Edit.GoToAll") can follow symbols in comments, whereas CTRL+F12 ("Edit.GoToImplementation") cannot.
+//   With Visual Assist installed: ALT+G ("VAssistX.GoToImplementation") can also follow symbols in comments.
+// - When changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
+enum ImGuiStyleVar
+{
+    // Enum name --------------------- // Member in ImGuiStyle structure (see ImGuiStyle for descriptions)
+    Alpha,               // float     Alpha
+    DisabledAlpha,       // float     DisabledAlpha
+    WindowPadding,       // ImVec2    WindowPadding
+    WindowRounding,      // float     WindowRounding
+    WindowBorderSize,    // float     WindowBorderSize
+    WindowMinSize,       // ImVec2    WindowMinSize
+    WindowTitleAlign,    // ImVec2    WindowTitleAlign
+    ChildRounding,       // float     ChildRounding
+    ChildBorderSize,     // float     ChildBorderSize
+    PopupRounding,       // float     PopupRounding
+    PopupBorderSize,     // float     PopupBorderSize
+    FramePadding,        // ImVec2    FramePadding
+    FrameRounding,       // float     FrameRounding
+    FrameBorderSize,     // float     FrameBorderSize
+    ItemSpacing,         // ImVec2    ItemSpacing
+    ItemInnerSpacing,    // ImVec2    ItemInnerSpacing
+    IndentSpacing,       // float     IndentSpacing
+    CellPadding,         // ImVec2    CellPadding
+    ScrollbarSize,       // float     ScrollbarSize
+    ScrollbarRounding,   // float     ScrollbarRounding
+    GrabMinSize,         // float     GrabMinSize
+    GrabRounding,        // float     GrabRounding
+    TabRounding,         // float     TabRounding
+    TabBarBorderSize,    // float     TabBarBorderSize
+    ButtonTextAlign,     // ImVec2    ButtonTextAlign
+    SelectableTextAlign, // ImVec2    SelectableTextAlign
+    SeparatorTextBorderSize,// float  SeparatorTextBorderSize
+    SeparatorTextAlign,  // ImVec2    SeparatorTextAlign
+    SeparatorTextPadding,// ImVec2    SeparatorTextPadding
+    DockingSeparatorSize,// float     DockingSeparatorSize
+    COUNT
+};
+
 
 // Flags for ColorEdit3() / ColorEdit4() / ColorPicker3() / ColorPicker4() / ColorButton()
 [Flags]
@@ -199,16 +271,16 @@ struct ImDrawIdx
 [StructLayout(LayoutKind.Sequential)]
 struct ImDrawVert
 {
-	float2  pos;
-	float2  uv;
-	uint  col;
+	public float2  pos;
+	public uint  col;
+	public float2  uv;
 };
 
 //-----------------------------------------------------------------------------
 // [SECTION] ImGuiStyle
 //-----------------------------------------------------------------------------
 // You may modify the ImGui::GetStyle() main instance during initialization and before NewFrame().
-// During the frame, use ImGui::PushStyleVar(ImGuiStyleVar_XXXX)/PopStyleVar() to alter the main style values,
+// During the frame, use ImGui::PushStyleVar(XXXX)/PopStyleVar() to alter the main style values,
 // and ImGui::PushStyleColor(XXX)/PopStyleColor() for colors.
 //-----------------------------------------------------------------------------
 
@@ -450,7 +522,7 @@ unsafe struct ImDrawCmd
 {
 	public float4          ClipRect;           // 4*4  // Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
 	ImTextureID     TextureId;          // 4-8  // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
-	uint    VtxOffset;          // 4    // Start offset in vertex buffer. ImGuiBackendFlags_RendererHasVtxOffset: always 0, otherwise may be >0 to support meshes larger than 64K vertices with 16-bit indices.
+	public uint    VtxOffset;          // 4    // Start offset in vertex buffer. ImGuiBackendFlags_RendererHasVtxOffset: always 0, otherwise may be >0 to support meshes larger than 64K vertices with 16-bit indices.
 	public uint    IdxOffset;          // 4    // Start offset in index buffer.
 	public uint    ElemCount;          // 4    // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
 	public ImDrawCallback  UserCallback;       // 4-8  // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
@@ -693,7 +765,7 @@ unsafe struct ImGuiIO
     void*       UserData;                       // = NULL           // Store your own data.
 
     public ImFontAtlas* Fonts;                          // <auto>           // Font atlas: load, rasterize and pack one or more fonts into a single texture. // ImFontAtlas
-    float       FontGlobalScale;                // = 1.0f           // Global scale all fonts
+    public float       FontGlobalScale;                // = 1.0f           // Global scale all fonts
     byte        FontAllowUserScaling;           // = false          // Allow user scaling text of individual window with CTRL+Wheel.
     void*     FontDefault;                    // = NULL           // Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0]. // ImFont
     public float2      DisplayFramebufferScale;        // = (1, 1)         // For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
@@ -786,12 +858,20 @@ unsafe struct ImGuiIO
     // Input Functions
 //     void  AddKeyEvent(ImGuiKey key, byte down);                   // Queue a new key down/up event. Key should be "translated" (as in, generally ImGuiKey_A matches the key end-user would use to emit an 'A' character)
 //     void  AddKeyAnalogEvent(ImGuiKey key, byte down, float v);    // Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
-//     void  AddMousePosEvent(float x, float y);                     // Queue a mouse position update. Use -FLT_MAX,-FLT_MAX to signify no mouse (e.g. app not focused and not hovered)
-//     void  AddMouseButtonEvent(int button, byte down);             // Queue a mouse button change
-//     void  AddMouseWheelEvent(float wheel_x, float wheel_y);       // Queue a mouse wheel update. wheel_y<0: scroll down, wheel_y>0: scroll up, wheel_x<0: scroll right, wheel_x>0: scroll left.
+    [DllImport("cimgui")] 
+	static extern void  ImGuiIO_AddMousePosEvent(ImGuiIO* data,float x, float y);                     // Queue a mouse position update. Use -FLT_MAX,-FLT_MAX to signify no mouse (e.g. app not focused and not hovered)
+	public unsafe void AddMousePosEvent(float x, float y) => ImGuiIO_AddMousePosEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), x, y); 
+	[DllImport("cimgui")]
+	static extern void  ImGuiIO_AddMouseButtonEvent(ImGuiIO* data, int button, byte down);             // Queue a mouse button change
+	public void AddMouseButtonEvent(int button, byte down) => ImGuiIO_AddMouseButtonEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), button, down);
+	[DllImport("cimgui")]
+    static extern void  ImGuiIO_AddMouseWheelEvent(ImGuiIO* data, float wheel_x, float wheel_y);       // Queue a mouse wheel update. wheel_y<0: scroll down, wheel_y>0: scroll up, wheel_x<0: scroll right, wheel_x>0: scroll left.
+    public void AddMouseWheelEvent(float wheel_x, float wheel_y) => ImGuiIO_AddMouseWheelEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), wheel_x, wheel_y);
 //     void  AddMouseSourceEvent(ImGuiMouseSource source);           // Queue a mouse source change (Mouse/TouchScreen/Pen)
 //     void  AddMouseViewportEvent(ImGuiID id);                      // Queue a mouse hovered viewport. Requires backend to set ImGuiBackendFlags_HasMouseHoveredViewport to call this (for multi-viewport support).
-//     void  AddFocusEvent(byte focused);                            // Queue a gain/loss of focus for the application (generally based on OS/platform focus of your window)
+	[DllImport("cimgui")]
+	public static extern void  ImGuiIO_AddFocusEvent(ImGuiIO* data, byte focused);                            // Queue a gain/loss of focus for the application (generally based on OS/platform focus of your window)
+	public void AddFocusEvent(byte focused) => ImGuiIO_AddFocusEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), focused);
 //     void  AddInputCharacter(unsigned int c);                      // Queue a new character input
 //     void  AddInputCharacterUTF16(ImWchar16 c);                    // Queue a new character input from a UTF-16 character, it can be a surrogate
 //     void  AddInputCharactersUTF8(const char* str);                // Queue a new characters input from a UTF-8 string
@@ -813,7 +893,7 @@ unsafe struct ImGuiIO
     byte        WantCaptureMouse;                   // Set when Dear ImGui will use mouse inputs, in this case do not dispatch them to your main game/application (either way, always pass on mouse inputs to imgui). (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
     byte        WantCaptureKeyboard;                // Set when Dear ImGui will use keyboard inputs, in this case do not dispatch them to your main game/application (either way, always pass keyboard inputs to imgui). (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
     byte        WantTextInput;                      // Mobile/console: when set, you may display an on-screen keyboard. This is set by Dear ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
-    byte        WantSetMousePos;                    // MousePos has been altered, backend should reposition mouse on next frame. Rarely used! Set only when ImGuiConfigFlags_NavEnableSetMousePos flag is enabled.
+    public byte        WantSetMousePos;                    // MousePos has been altered, backend should reposition mouse on next frame. Rarely used! Set only when ImGuiConfigFlags_NavEnableSetMousePos flag is enabled.
     byte        WantSaveIniSettings;                // When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
     byte        NavActive;                          // Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
     byte        NavVisible;                         // Keyboard/Gamepad navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
@@ -843,7 +923,7 @@ unsafe struct ImGuiIO
     // Main Input State
     // (this block used to be written by backend, since 1.87 it is best to NOT write to those directly, call the AddXXX functions above instead)
     // (reading from those variables is fair game, as they are extremely unlikely to be moving anywhere)
-    float2      MousePos;                           // Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
+    public float2      MousePos;                           // Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
     fixed byte        MouseDown[5];                       // Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Other buttons allow us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
     float       MouseWheel;                         // Mouse wheel Vertical: 1 unit scrolls about 5 lines text. >0 scrolls Up, <0 scrolls Down. Hold SHIFT to turn vertical scroll into horizontal scroll.
     float       MouseWheelH;                        // Mouse wheel Horizontal. >0 scrolls Left, <0 scrolls Right. Most users don't have a mouse with a horizontal wheel, may not be filled by all backends.
@@ -907,7 +987,10 @@ unsafe struct ImFontAtlas
     [DllImport("cimgui")]
     static extern ImFont* ImFontAtlas_AddFontDefault(ImFontAtlas* data, ImFontConfig* font_cfg = null);
     public ImFont* AddFontDefault(ImFontConfig* font_cfg = null) => ImFontAtlas_AddFontDefault((ImFontAtlas*)UnsafeUtility.AddressOf(ref this), font_cfg);
-    // ImFont*           AddFontFromFileTTF(const char* filename, float size_pixels, const ImFontConfig* font_cfg = NULL, const ImWchar* glyph_ranges = NULL);
+    [DllImport("cimgui")]
+    static extern ImFont* ImFontAtlas_AddFontFromFileTTF(ImFontAtlas* data, char* filename, float size_pixels, ImFontConfig* font_cfg = null, ImWchar* glyph_ranges = null);
+    public ImFont* AddFontFromFileTTF(FixedString512Bytes filename, float size_pixels, ImFontConfig* font_cfg = null, ImWchar* glyph_ranges = null)
+		=> ImFontAtlas_AddFontFromFileTTF((ImFontAtlas*)UnsafeUtility.AddressOf(ref this), (char*)filename.GetUnsafePtr(), size_pixels, font_cfg, glyph_ranges);
     // ImFont*           AddFontFromMemoryTTF(void* font_data, int font_data_size, float size_pixels, const ImFontConfig* font_cfg = NULL, const ImWchar* glyph_ranges = NULL); // Note: Transfer ownership of 'ttf_data' to ImFontAtlas! Will be deleted after destruction of the atlas. Set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed.
     // ImFont*           AddFontFromMemoryCompressedTTF(const void* compressed_font_data, int compressed_font_data_size, float size_pixels, const ImFontConfig* font_cfg = NULL, const ImWchar* glyph_ranges = NULL); // 'compressed_font_data' still owned by caller. Compress with binary_to_compressed_c.cpp.
     // ImFont*           AddFontFromMemoryCompressedBase85TTF(const char* compressed_font_data_base85, float size_pixels, const ImFontConfig* font_cfg = NULL, const ImWchar* glyph_ranges = NULL);              // 'compressed_font_data_base85' still owned by caller. Compress with binary_to_compressed_c.cpp with -base85 parameter.
@@ -1020,7 +1103,7 @@ unsafe struct ImFontConfig
     int             FontDataSize;           //          // TTF/OTF data size
     bool            FontDataOwnedByAtlas;   // true     // TTF/OTF data ownership taken by the container ImFontAtlas (will delete memory itself).
     int             FontNo;                 // 0        // Index of font within TTF/OTF file
-    float           SizePixels;             //          // Size in pixels for rasterizer (more or less maps to the resulting font height).
+    public float           SizePixels;             //          // Size in pixels for rasterizer (more or less maps to the resulting font height).
     int             OversampleH;            // 2        // Rasterize at higher quality for sub-pixel positioning. Note the difference between 2 and 3 is minimal. You can reduce this to 1 for large glyphs save memory. Read https://github.com/nothings/stb/blob/master/tests/oversample/README.md for details.
     int             OversampleV;            // 1        // Rasterize at higher quality for sub-pixel positioning. This is not really useful as we don't use sub-pixel positions on the Y axis.
     bool            PixelSnapH;             // false    // Align every glyph to pixel boundary. Useful e.g. if you are merging a non-pixel aligned font with the default font. If enabled, you can set OversampleH/V to 1.
@@ -1040,6 +1123,21 @@ unsafe struct ImFontConfig
     ImFont*         DstFont;
 
     // IMGUI_API ImFontConfig();
+    
+    public static unsafe ImFontConfig DefaultFontConfig()
+    {
+	    ImFontConfig config = new ImFontConfig
+	    {
+		    FontDataOwnedByAtlas = true,
+		    OversampleH = 2,
+		    OversampleV = 1,
+		    GlyphMaxAdvanceX = float.MaxValue,
+		    RasterizerMultiply = 5.0f,
+		    RasterizerDensity = 5.0f,
+		    EllipsisChar = new ImWchar{Value = (uint)(sizeof(ImWchar) - 1)},
+	    };
+		return config;
+	}
 };
 
 // Font runtime data and rendering

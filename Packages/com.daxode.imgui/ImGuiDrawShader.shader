@@ -16,24 +16,38 @@
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+            #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
+            #include "UnityIndirect.cginc"
 
             struct appdata
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR0;
             };
 
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
+                float4 pos : SV_POSITION;
+                float4 color : COLOR0;
             };
 
             v2f vert(appdata v)
             {
+                InitIndirectDrawArgs(0);
                 v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
+                // uint cmdID = GetCommandID(0);
+                // uint instanceID = GetIndirectInstanceID(svInstanceID);
+                // float4 wpos = mul(unity_ObjectToWorld, v.vertex);
+                o.pos.xy = (v.vertex.xy/_ScreenParams.xy)*2-1;
+#if UNITY_UV_STARTS_AT_TOP
+                o.pos.y = 0.5 - o.pos.y;
+#endif
+                o.pos.z = 0;
+                o.pos.w = 1;
                 o.uv = v.uv;
+                o.color = v.color;
                 return o;
             }
 
@@ -42,9 +56,8 @@
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv);
-                // just invert the colors
-                col = 1 - col;
-                return col;
+                clip(col.a - 0.1);
+                return col * i.color;
             }
             ENDCG
         }

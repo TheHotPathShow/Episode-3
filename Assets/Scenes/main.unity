@@ -261,7 +261,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37608e66e1ba450ba7d3b5d321ecf37e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shader: {fileID: -6465566751694194690, guid: 32e72a0e7073ea24fb693d07eb2e97e6, type: 3}
+  shader: {fileID: 4800000, guid: fb8c3e7fd9a842e38bf77639b8424a0a, type: 3}
 --- !u!64 &715011528
 MeshCollider:
   m_ObjectHideFlags: 0
