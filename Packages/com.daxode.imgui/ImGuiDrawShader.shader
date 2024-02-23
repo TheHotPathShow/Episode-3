@@ -8,6 +8,7 @@
     {
         // No culling or depth
         Cull Off ZWrite Off ZTest Always
+        Blend SrcAlpha OneMinusSrcAlpha
 
         Pass
         {
@@ -37,7 +38,7 @@
             {
                 InitIndirectDrawArgs(0);
                 v2f o;
-                // uint cmdID = GetCommandID(0);
+                uint cmdID = GetCommandID(0);
                 // uint instanceID = GetIndirectInstanceID(svInstanceID);
                 // float4 wpos = mul(unity_ObjectToWorld, v.vertex);
                 o.pos.xy = (v.vertex.xy/_ScreenParams.xy)*2-1;
@@ -55,9 +56,7 @@
 
             fixed4 frag(v2f i) : SV_Target
             {
-                fixed4 col = tex2D(_MainTex, i.uv);
-                clip(col.a - 0.1);
-                return col * i.color;
+                return tex2D(_MainTex, i.uv) * i.color;
             }
             ENDCG
         }

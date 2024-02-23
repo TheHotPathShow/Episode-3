@@ -15,6 +15,7 @@ namespace com.daxode.imgui
             // if (shader == null)
             //     return;
             material = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/ImGuiDrawShader"));
+            material.enableInstancing = true;
             m_RenderPass = new ImGuiRenderPass(material);
         }
 

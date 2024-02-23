@@ -79,28 +79,28 @@ namespace com.daxode.imgui
             ImGui.NewFrame();
 
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window)
-                 ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
+            // if (show_demo_window)
+            //      ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
 
             // ImGui.SetNextWindowSize(new float2(2000, 1000), ImGuiCond.Always);
             
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
-                // ImGui.Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+                ImGui.Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
                 // ImGui.Text("This is some useful text.");               // Display some text (you can use a format strings too)
-                // // ImGui.Checkbox("Demo Window", ref show_demo_window);      // Edit bools storing our window open/close state
-                // // ImGui.Checkbox("Another Window", ref show_another_window);
-                // //
-                // // ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-                // // ImGui.ColorEdit3("clear color", ref clear_color); // Edit 3 floats representing a color
-                // //
-                // // if (ImGui.Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                // //     counter++;
-                // // ImGui.SameLine();
-                // // ImGui.Text($"counter = {counter}");
-                //
+                ImGui.Checkbox("Demo Window", ref show_demo_window);      // Edit bools storing our window open/close state
+                ImGui.Checkbox("Another Window", ref show_another_window);
+                
+                ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                ImGui.ColorEdit3("clear color", ref clear_color); // Edit 3 floats representing a color
+                
+                if (ImGui.Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                    counter++;
+                ImGui.SameLine();
+                ImGui.Text($"counter = {counter}");
+                
                 // ImGui.Text($"Application average {1000.0f / io->Framerate} ms/frame ({io->Framerate} FPS)");
-                // ImGui.End();
+                ImGui.End();
             }
 
             // 3. Show another simple window.

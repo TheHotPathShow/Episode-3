@@ -15,7 +15,7 @@ namespace com.daxode.imgui
         Mesh mesh;
         Material material;
         NativeList<GraphicsBuffer.IndirectDrawIndexedArgs> draw_cmds;
-        NativeReference<UnityObjRef<Texture2D>> texture;
+        NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)> additionalData;
         NativeReference<Mesh.MeshData> data;
         RTHandle m_CameraColorTarget;
         GraphicsBuffer drawCmdBuffer;
@@ -25,7 +25,7 @@ namespace com.daxode.imgui
             this.material = material;
             renderPassEvent = RenderPassEvent.AfterRendering;
             draw_cmds = new NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>(100, Allocator.Persistent);
-            texture = new NativeReference<UnityObjRef<Texture2D>>(Allocator.Persistent);
+            additionalData = new NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)>(Allocator.Persistent);
             mesh = new Mesh();
             data = new NativeReference<Mesh.MeshData>(Allocator.Persistent);
             drawCmdBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1000, GraphicsBuffer.IndirectDrawIndexedArgs.size);
@@ -54,6 +54,9 @@ namespace com.daxode.imgui
         public unsafe override void Execute(ScriptableRenderContext context,
             ref RenderingData renderingData)
         {
+            if (ImGui.GetCurrentContext() == null)
+                return;
+            
             // Rendering
             ImGui.Render();
             // int display_w, display_h;
@@ -66,7 +69,8 @@ namespace com.daxode.imgui
             var dataArray = Mesh.AllocateWritableMeshData(1);
             data.Value = dataArray[0];
             draw_cmds.Clear();
-            ImGui_ImplVulkan_RenderDrawData(ImGui.GetDrawData(), data, (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref draw_cmds), texture);
+            var draw_data = ImGui.GetDrawData();
+            ImGui_ImplVulkan_RenderDrawData(draw_data, data, (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref draw_cmds), additionalData);
             Mesh.ApplyAndDisposeWritableMeshData(dataArray, mesh, meshUpdateFlags);
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
             drawCmdBuffer.SetCounterValue((uint)draw_cmds.Length);
@@ -75,12 +79,16 @@ namespace com.daxode.imgui
             // foreach (var drawCmd in draw_cmds) 
             //     Debug.Log($"drawCmd: {drawCmd.indexCountPerInstance} {drawCmd.instanceCount} {drawCmd.startIndex} {drawCmd.baseVertexIndex} {drawCmd.startInstance}");
             
-            material.mainTexture = texture.Value;
+            material.mainTexture = additionalData.Value.texture;
             
             //Get a CommandBuffer from pool.
             CommandBuffer cmd = CommandBufferPool.Get("ImGuiRenderPass");
             // cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
+            Debug.Log($"Display Pos: {draw_data->DisplayPos} Display Size: {draw_data->DisplaySize} Scissor: {additionalData.Value.scissor}");
+            cmd.SetViewport(new Rect(draw_data->DisplayPos, draw_data->DisplaySize));
+            cmd.EnableScissorRect(additionalData.Value.scissor);
             cmd.DrawMeshInstancedIndirect(mesh, 0, material, -1, drawCmdBuffer);
+            cmd.DisableScissorRect();
             
             // renderingData.cameraData.camera.AddCommandBuffer(CameraEvent.AfterEverything, cmd);
             // glfwMakeContextCurrent(window);
@@ -96,7 +104,7 @@ namespace com.daxode.imgui
         [BurstCompile]
         unsafe static void ImGui_ImplVulkan_RenderDrawData(ImDrawData* draw_data, NativeReference<Mesh.MeshData> data,
             NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>* draw_cmds,
-            NativeReference<UnityObjRef<Texture2D>> texture)
+            NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)> additionalData)
         {
             // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
             int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -154,6 +162,7 @@ namespace com.daxode.imgui
             for (int n = 0; n < draw_data->CmdListsCount; n++)
             {
                 ref var cmd_list = ref draw_data->CmdLists[n];
+                Debug.Log($"CmdListsCount: {cmd_list.Value->CmdBuffer.Size}");
                 for (int cmd_i = 0; cmd_i < cmd_list.Value->CmdBuffer.Size; cmd_i++)
                 {
                     ref var pcmd = ref cmd_list.Value->CmdBuffer[cmd_i];
@@ -175,32 +184,10 @@ namespace com.daxode.imgui
                             (pcmd.ClipRect.w - clip_off.y) * clip_scale.y);
 
                         // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
-                        if (clip_min.x < 0.0f)
-                        {
-                            clip_min.x = 0.0f;
-                        }
-
-                        if (clip_min.y < 0.0f)
-                        {
-                            clip_min.y = 0.0f;
-                        }
-
-                        if (clip_max.x > fb_width)
-                        {
-                            clip_max.x = (float)fb_width;
-                        }
-
-                        if (clip_max.y > fb_height)
-                        {
-                            clip_max.y = (float)fb_height;
-                        }
-
+                        clip_min = math.max(clip_min, new float2(0, 0));
+                        clip_max = math.min(clip_max, new float2(fb_width, fb_height));
                         if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                             continue;
-
-                        // Apply scissor/clipping rectangle
-                        // Rect scissor = new Rect(clip_min, clip_max - clip_min);
-                        // cmd.EnableScissorRect(scissor);
 
                         // Bind DescriptorSet with font or user texture
                         // VkDescriptorSet desc_set[1] = { (VkDescriptorSet)pcmd->TextureId };
@@ -211,14 +198,18 @@ namespace com.daxode.imgui
                         //     desc_set[0] = bd->FontDescriptorSet;
                         // }
                         // vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, bd->PipelineLayout, 0, 1, desc_set, 0, nullptr);
+                        var value = additionalData.Value;
                         var textureId = pcmd.GetTexID();
-                        texture.Value = UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId);
+                        if (cmd_i == 0)
+                            value.scissor = new Rect(clip_min, clip_max - clip_min);
+                        value.texture = UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId);
+                        additionalData.Value = value;
 
                         // Draw
                         draw_cmds->Add(new GraphicsBuffer.IndirectDrawIndexedArgs()
                         {
                             indexCountPerInstance = pcmd.ElemCount,
-                            instanceCount = 1,
+                            instanceCount = 10,
                             startIndex = (uint)(pcmd.IdxOffset + global_idx_offset),
                             baseVertexIndex = (uint)(pcmd.VtxOffset + global_vtx_offset),
                             startInstance = 0
@@ -229,6 +220,7 @@ namespace com.daxode.imgui
                 global_idx_offset += cmd_list.Value->IdxBuffer.Size;
                 global_vtx_offset += cmd_list.Value->VtxBuffer.Size;
             }
+            
             meshData.subMeshCount = 1;
             meshData.SetSubMesh(0, new SubMeshDescriptor(0, draw_data->TotalIdxCount, MeshTopology.Triangles), meshUpdateFlags);
         }
@@ -293,7 +285,7 @@ namespace com.daxode.imgui
                 }
                 
                 draw_cmds.Dispose();
-                texture.Dispose();
+                additionalData.Dispose();
                 data.Dispose();
             }
 
