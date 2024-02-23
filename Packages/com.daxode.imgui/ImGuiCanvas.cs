@@ -3,12 +3,10 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace com.daxode.imgui
 {
-    public partial class ImGuiCanvas : MonoBehaviour
+    public class ImGuiCanvas : MonoBehaviour
     {
         public unsafe void Start()
         {
@@ -48,7 +46,7 @@ namespace com.daxode.imgui
             // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
             // var fontConfig = ImFontConfig.DefaultFontConfig();
             // fontConfig.SizePixels = 128.0f;
-            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 18.0f);
+            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 72.0f);
             
             // io->Fonts->AddFontDefault();
             //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
@@ -108,7 +106,7 @@ namespace com.daxode.imgui
             {
                 ImGui.Begin("Another Window", ref show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
                 ImGui.Text("Hello from another window!");
-                if (ImGui.Button("Close Me"))
+                if (ImGui.Button("Close Me", new float2(50, 50)))
                     show_another_window = false;
                 ImGui.End();
             }
@@ -291,7 +289,7 @@ namespace com.daxode.imgui
                 
                 var mouse = ((float3) Input.mousePosition).xy;
                 bd->LastValidMousePos = mouse;
-                io->AddMousePosEvent(mouse.x, io->DisplaySize.y*1.25f-mouse.y);
+                io->AddMousePosEvent(mouse.x, io->DisplaySize.y-mouse.y);
             }
         }
         

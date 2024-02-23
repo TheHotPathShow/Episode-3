@@ -73,7 +73,7 @@ namespace com.daxode.imgui
             ImGui_ImplVulkan_RenderDrawData(draw_data, data, (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref draw_cmds), additionalData);
             Mesh.ApplyAndDisposeWritableMeshData(dataArray, mesh, meshUpdateFlags);
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
-            drawCmdBuffer.SetCounterValue((uint)draw_cmds.AsArray().Length);
+            drawCmdBuffer.SetCounterValue((uint)draw_cmds.Length);
             drawCmdBuffer.SetData(draw_cmds.AsArray());
             
             // foreach (var drawCmd in draw_cmds) 

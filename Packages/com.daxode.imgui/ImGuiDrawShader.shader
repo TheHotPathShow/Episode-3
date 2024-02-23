@@ -42,9 +42,9 @@
                 // uint instanceID = GetIndirectInstanceID(svInstanceID);
                 // float4 wpos = mul(unity_ObjectToWorld, v.vertex);
                 o.pos.xy = (v.vertex.xy/_ScreenParams.xy)*2-1;
-#if UNITY_UV_STARTS_AT_TOP
-                o.pos.y = 0.5 - o.pos.y;
-#endif
+// #if UNITY_UV_STARTS_AT_TOP
+//                 o.pos.y = 0.5 - o.pos.y;
+// #endif
                 o.pos.z = 0;
                 o.pos.w = 1;
                 o.uv = v.uv;
