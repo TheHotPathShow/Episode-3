@@ -90,7 +90,7 @@ static class ImGui
 	[DllImport("cimgui", EntryPoint = "igCreateContext")]
 	public static extern unsafe ImGuiContext* CreateContext(void* shared_font_atlas = null); // ImFontAtlas
 
-	public static unsafe bool DebugCheckVersionAndDataLayout(FixedString128Bytes version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx)
+	static unsafe bool DebugCheckVersionAndDataLayout(FixedString128Bytes version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx)
 		=> DebugCheckVersionAndDataLayout((char*)version_str.GetUnsafePtr(), sz_io, sz_style, sz_vec2, sz_vec4, sz_drawvert, sz_drawidx);
 	
 	[DllImport("cimgui", EntryPoint = "igDebugCheckVersionAndDataLayout")]
@@ -102,7 +102,20 @@ static class ImGui
 	public static extern unsafe void          PushStyleVar(ImGuiStyleVar idx, float2 val);             // modify a style ImVec2 variable. always use this if you modify the style after NewFrame().
 	[DllImport("cimgui", EntryPoint = "igSetNextWindowSize")]
 	public static extern unsafe void          SetNextWindowSize(float2 size, ImGuiCond cond = 0);                  // set next window size. set axis to 0.0f to force an auto-fit on this axis. call before Begin()
+	
+	public static unsafe void CheckVersion()
+		=> DebugCheckVersionAndDataLayout(VERSION, 
+			sizeof(ImGuiIO), sizeof(ImGuiStyle), sizeof(float2),
+			sizeof(float4), sizeof(ImDrawVert), sizeof(ImDrawIdx));
 }
+
+enum ImGuiMouseButton : int
+{
+	Left = 0,
+	Right = 1,
+	Middle = 2,
+	COUNT = 5
+};
 
 
 // Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
@@ -840,8 +853,8 @@ unsafe struct ImGuiIO
 
     // Optional: Access OS clipboard
     // (default to use native Win32 clipboard on Windows, otherwise uses a private clipboard. Override to access OS clipboard on other architectures)
-	delegate* unmanaged[Cdecl] <void*, char*> GetClipboardTextFn;
-	delegate* unmanaged[Cdecl] <void*, char*, void> SetClipboardTextFn;
+    public delegate* unmanaged[Cdecl] <void*, char*> GetClipboardTextFn;
+	public delegate* unmanaged[Cdecl] <void*, char*, void> SetClipboardTextFn;
 	public void*       ClipboardUserData;
 
     // Optional: Notify OS Input Method Editor of the screen position of your cursor for text input position (e.g. when using Japanese/Chinese IME on Windows)
