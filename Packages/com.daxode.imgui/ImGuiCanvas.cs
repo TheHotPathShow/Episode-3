@@ -48,7 +48,7 @@ namespace com.daxode.imgui
             // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
             // var fontConfig = ImFontConfig.DefaultFontConfig();
             // fontConfig.SizePixels = 128.0f;
-            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 180.0f);
+            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 18.0f);
             
             // io->Fonts->AddFontDefault();
             //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
@@ -79,15 +79,15 @@ namespace com.daxode.imgui
             ImGui.NewFrame();
 
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            // if (show_demo_window)
-            //      ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
+            if (show_demo_window)
+                 ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
 
             // ImGui.SetNextWindowSize(new float2(2000, 1000), ImGuiCond.Always);
             
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
                 ImGui.Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-                // ImGui.Text("This is some useful text.");               // Display some text (you can use a format strings too)
+                ImGui.Text("This is some useful text.");               // Display some text (you can use a format strings too)
                 ImGui.Checkbox("Demo Window", ref show_demo_window);      // Edit bools storing our window open/close state
                 ImGui.Checkbox("Another Window", ref show_another_window);
                 
@@ -99,7 +99,7 @@ namespace com.daxode.imgui
                 ImGui.SameLine();
                 ImGui.Text($"counter = {counter}");
                 
-                // ImGui.Text($"Application average {1000.0f / io->Framerate} ms/frame ({io->Framerate} FPS)");
+                ImGui.Text($"Application average {1000.0f / io->Framerate} ms/frame ({io->Framerate} FPS)");
                 ImGui.End();
             }
 
@@ -119,9 +119,6 @@ namespace com.daxode.imgui
             // Cleanup
             ImGui_ImplOpenGL2_Shutdown();
             ImGui_ImplGlfw_Shutdown();
-            Debug.Log(((IntPtr)ImGui.GetIO()->BackendPlatformUserData).ToString());
-            Debug.Log(((IntPtr)ImGui.GetIO()->BackendRendererUserData).ToString());
-            
             // ImGui.DestroyContext();
 
             // glfwDestroyWindow(window);
@@ -264,10 +261,10 @@ namespace com.daxode.imgui
 
             // ImGui_ImplGlfw_UpdateKeyModifiers(window);
 
-            Debug.Log($"Button: {button}, PressedDown: {pressedDown}");
+            // Debug.Log($"Button: {button}, PressedDown: {pressedDown}");
             
             var io = ImGui.GetIO();
-            Debug.Log(io->MousePos);
+            // Debug.Log(io->MousePos);
             if (button is >= 0 and < ImGuiMouseButton.COUNT)
                 io->AddMouseButtonEvent((int)button, pressedDown);
         }

@@ -73,7 +73,7 @@ namespace com.daxode.imgui
             ImGui_ImplVulkan_RenderDrawData(draw_data, data, (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref draw_cmds), additionalData);
             Mesh.ApplyAndDisposeWritableMeshData(dataArray, mesh, meshUpdateFlags);
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
-            drawCmdBuffer.SetCounterValue((uint)draw_cmds.Length);
+            drawCmdBuffer.SetCounterValue((uint)draw_cmds.AsArray().Length);
             drawCmdBuffer.SetData(draw_cmds.AsArray());
             
             // foreach (var drawCmd in draw_cmds) 
@@ -84,11 +84,12 @@ namespace com.daxode.imgui
             //Get a CommandBuffer from pool.
             CommandBuffer cmd = CommandBufferPool.Get("ImGuiRenderPass");
             // cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
-            Debug.Log($"Display Pos: {draw_data->DisplayPos} Display Size: {draw_data->DisplaySize} Scissor: {additionalData.Value.scissor}");
-            cmd.SetViewport(new Rect(draw_data->DisplayPos, draw_data->DisplaySize));
-            cmd.EnableScissorRect(additionalData.Value.scissor);
-            cmd.DrawMeshInstancedIndirect(mesh, 0, material, -1, drawCmdBuffer);
-            cmd.DisableScissorRect();
+            // Debug.Log($"Display Pos: {draw_data->DisplayPos} Display Size: {draw_data->DisplaySize} Scissor: {additionalData.Value.scissor}");
+            // cmd.SetViewport(new Rect(draw_data->DisplayPos, draw_data->DisplaySize));
+            // cmd.EnableScissorRect(additionalData.Value.scissor);
+            for (int i = 0; i < draw_cmds.Length; i++) 
+                cmd.DrawMeshInstancedIndirect(mesh, 0, material, -1, drawCmdBuffer, i * GraphicsBuffer.IndirectDrawIndexedArgs.size);
+            // cmd.DisableScissorRect();
             
             // renderingData.cameraData.camera.AddCommandBuffer(CameraEvent.AfterEverything, cmd);
             // glfwMakeContextCurrent(window);
@@ -162,7 +163,7 @@ namespace com.daxode.imgui
             for (int n = 0; n < draw_data->CmdListsCount; n++)
             {
                 ref var cmd_list = ref draw_data->CmdLists[n];
-                Debug.Log($"CmdListsCount: {cmd_list.Value->CmdBuffer.Size}");
+                // Debug.Log($"CmdListsCount: {cmd_list.Value->CmdBuffer.Size}");
                 for (int cmd_i = 0; cmd_i < cmd_list.Value->CmdBuffer.Size; cmd_i++)
                 {
                     ref var pcmd = ref cmd_list.Value->CmdBuffer[cmd_i];
