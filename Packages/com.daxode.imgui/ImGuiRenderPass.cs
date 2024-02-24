@@ -5,7 +5,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.LowLevel;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using Object = UnityEngine.Object;
@@ -14,23 +13,36 @@ namespace com.daxode.imgui
 {
     public class ImGuiRenderPass : ScriptableRenderPass, IDisposable
     {
-        Mesh mesh;
-        Material material;
-        NativeList<GraphicsBuffer.IndirectDrawIndexedArgs> draw_cmds;
-        NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)> additionalData;
-        NativeReference<Mesh.MeshData> data;
-        GraphicsBuffer drawCmdBuffer;
+        Mesh m_Mesh;
+        Material m_Material;
+        NativeReference<Mesh.MeshData> m_MeshData;
+        NativeArray<VertexAttributeDescriptor> m_VertexAttributes;
         
-        public unsafe ImGuiRenderPass(Material material)
+        GraphicsBuffer m_DrawCmdBuffer;
+        NativeList<GraphicsBuffer.IndirectDrawIndexedArgs> m_DrawCommands;
+        NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)> m_AdditionalData;
+        
+        static readonly int k_MainTex = Shader.PropertyToID("_MainTex");
+        MaterialPropertyBlock m_PropertyBlock;
+
+        public unsafe ImGuiRenderPass()
         {
-            this.material = material;
+            m_Material = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/ImGuiDrawShader"));
             renderPassEvent = RenderPassEvent.AfterRendering;
-            draw_cmds = new NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>(100, Allocator.Persistent);
-            additionalData = new NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)>(Allocator.Persistent);
-            mesh = new Mesh();
-            data = new NativeReference<Mesh.MeshData>(Allocator.Persistent);
-            drawCmdBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1000, GraphicsBuffer.IndirectDrawIndexedArgs.size);
-            drawCmdBuffer.name = "ImGuiDrawCmdBuffer";
+            m_DrawCommands = new NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>(100, Allocator.Persistent);
+            m_AdditionalData = new NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>(100, Allocator.Persistent);
+            m_Mesh = new Mesh();
+            m_MeshData = new NativeReference<Mesh.MeshData>(Allocator.Persistent);
+            m_DrawCmdBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1000, GraphicsBuffer.IndirectDrawIndexedArgs.size);
+            m_VertexAttributes = new NativeArray<VertexAttributeDescriptor>(3, Allocator.Persistent)
+            {
+                [0] = new (VertexAttribute.Position, VertexAttributeFormat.Float32, 2),
+                [1] = new (VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4),
+                [2] = new (VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2)
+            };
+            m_PropertyBlock = new MaterialPropertyBlock();
+            
+            m_DrawCmdBuffer.name = "ImGuiDrawCmdBuffer";
             
             // Setup Dear ImGui context
             ImGui.CheckVersion();
@@ -38,7 +50,8 @@ namespace com.daxode.imgui
             var io = ImGui.GetIO();
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;     // Enable Keyboard Controls
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableGamepad;      // Enable Gamepad Controls
-
+            io->ConfigFlags |= ImGuiConfigFlags.DockingEnable;         // Enable Docking
+            
             // Setup Dear ImGui style
             ImGui.StyleColorsDark();
 
@@ -57,28 +70,34 @@ namespace com.daxode.imgui
             ImGui.Render();
             
             var dataArray = Mesh.AllocateWritableMeshData(1);
-            data.Value = dataArray[0];
-            draw_cmds.Clear();
-            ImGui_ImplVulkan_RenderDrawData(ImGui.GetDrawData(), data, (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref draw_cmds), additionalData);
-            Mesh.ApplyAndDisposeWritableMeshData(dataArray, mesh, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontResetBoneBounds);
-            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
-            drawCmdBuffer.SetCounterValue((uint)draw_cmds.Length);
-            drawCmdBuffer.SetData(draw_cmds.AsArray());
-            material.mainTexture = additionalData.Value.texture;
+            m_MeshData.Value = dataArray[0];
+            m_DrawCommands.Clear();
+            m_AdditionalData.Clear();
+            FillDrawCommandsAndAdditionalData(ImGui.GetDrawData(), m_MeshData, m_VertexAttributes,
+                (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref m_DrawCommands), 
+                (NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>*)UnsafeUtility.AddressOf(ref m_AdditionalData));
+            Mesh.ApplyAndDisposeWritableMeshData(dataArray, m_Mesh, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontResetBoneBounds);
+            m_Mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
+            m_DrawCmdBuffer.SetCounterValue((uint)m_DrawCommands.Length);
+            m_DrawCmdBuffer.SetData(m_DrawCommands.AsArray());
         }
 
-        public override unsafe void Execute(ScriptableRenderContext context,
+        public override void Execute(ScriptableRenderContext context,
             ref RenderingData renderingData)
         {
-            
             //Get a CommandBuffer from pool.
-            CommandBuffer cmd = CommandBufferPool.Get("ImGuiRenderPass");
-            for (int i = 0; i < draw_cmds.Length; i++)
+            var cmd = CommandBufferPool.Get("ImGuiRenderPass");
+            for (int i = 0; i < m_DrawCommands.Length; i++)
             {
-                // cmd.EnableScissorRect(additionalData.Value.scissor);
-                cmd.DrawMeshInstancedIndirect(mesh, 0, material, -1, drawCmdBuffer, i * GraphicsBuffer.IndirectDrawIndexedArgs.size);
+                m_PropertyBlock.SetTexture(k_MainTex, m_AdditionalData[i].texture);
+                cmd.EnableScissorRect(m_AdditionalData[i].scissor);
+                cmd.DrawMeshInstancedIndirect(
+                    m_Mesh, 0, 
+                    m_Material, -1, 
+                    m_DrawCmdBuffer, i * GraphicsBuffer.IndirectDrawIndexedArgs.size, 
+                    m_PropertyBlock);
             }
-            // cmd.DisableScissorRect();
+            cmd.DisableScissorRect();
             
             //Execute the command buffer and release it back to the pool.
             context.ExecuteCommandBuffer(cmd);
@@ -87,14 +106,15 @@ namespace com.daxode.imgui
 
 
         [BurstCompile]
-        unsafe static void ImGui_ImplVulkan_RenderDrawData(ImDrawData* draw_data, NativeReference<Mesh.MeshData> data,
+        unsafe static void FillDrawCommandsAndAdditionalData(
+            ImDrawData* draw_data, NativeReference<Mesh.MeshData> data,
+            NativeArray<VertexAttributeDescriptor> vertexAttributes,
             NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>* draw_cmds,
-            NativeReference<(UnityObjRef<Texture2D> texture, Rect scissor)> additionalData)
+            NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>* additionalData)
         {
             // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-            var fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-            var fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-            if (fb_width <= 0 || fb_height <= 0)
+            var frameSize = (int2)(draw_data->DisplaySize * draw_data->FramebufferScale.x);
+            if (math.any(frameSize <= 0))
                 return;
 
             // Allocate array to store enough vertex/index buffers
@@ -103,11 +123,7 @@ namespace com.daxode.imgui
             {
                 // Create or resize the vertex/index buffers
                 meshData.SetIndexBufferParams(draw_data->TotalIdxCount, IndexFormat.UInt16);
-                meshData.SetVertexBufferParams(draw_data->TotalVtxCount,
-                    new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 2),
-                    new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4),
-                    new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2)
-                );
+                meshData.SetVertexBufferParams(draw_data->TotalVtxCount, vertexAttributes);
 
                 // Upload vertex/index data into a single contiguous GPU buffer
                 var indexData = meshData.GetIndexData<ImDrawIdx>();
@@ -127,13 +143,13 @@ namespace com.daxode.imgui
             }
             
             // Will project scissor/clipping rectangles into framebuffer space
-            float2 clip_off = draw_data->DisplayPos; // (0,0) unless using multi-viewports
-            float2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+            var clip_off = draw_data->DisplayPos; // (0,0) unless using multi-viewports
+            var clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
 
             // Render command lists
             // (Because we merged all buffers into a single one, we maintain our own offset into them)
-            int global_vtx_offset = 0;
-            int global_idx_offset = 0;
+            var global_vtx_offset = 0;
+            var global_idx_offset = 0;
             for (int n = 0; n < draw_data->CmdListsCount; n++)
             {
                 ref var cmd_list = ref draw_data->CmdLists[n];
@@ -152,32 +168,19 @@ namespace com.daxode.imgui
                     else
                     {
                         // Project scissor/clipping rectangles into framebuffer space
-                        var clip_min = new float2((pcmd.ClipRect.x - clip_off.x) * clip_scale.x,
-                            (pcmd.ClipRect.y - clip_off.y) * clip_scale.y);
-                        var clip_max = new float2((pcmd.ClipRect.z - clip_off.x) * clip_scale.x,
-                            (pcmd.ClipRect.w - clip_off.y) * clip_scale.y);
-
-                        // Clamp to viewport as vkCmdSetScissor() won't accept values that are off bounds
-                        clip_min = math.max(clip_min, new float2(0, 0));
-                        clip_max = math.min(clip_max, new float2(fb_width, fb_height));
-                        if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+                        var clipMin = (pcmd.ClipRect.xw - clip_off);
+                        clipMin.y = frameSize.y - clipMin.y;
+                        clipMin *= clip_scale;
+                        var clipMax = (pcmd.ClipRect.zy - clip_off);
+                        clipMax.y = frameSize.y - clipMax.y;
+                        clipMax *= clip_scale;
+                        if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
                             continue;
-
-                        // Bind DescriptorSet with font or user texture
-                        // VkDescriptorSet desc_set[1] = { (VkDescriptorSet)pcmd->TextureId };
-                        // if (sizeof(ImTextureID) < sizeof(ImU64))
-                        // {
-                        //     // We don't support texture switches if ImTextureID hasn't been redefined to be 64-bit. Do a flaky check that other textures haven't been used.
-                        //     IM_ASSERT(pcmd->TextureId == (ImTextureID)bd->FontDescriptorSet);
-                        //     desc_set[0] = bd->FontDescriptorSet;
-                        // }
-                        // vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, bd->PipelineLayout, 0, 1, desc_set, 0, nullptr);
-                        var value = additionalData.Value;
+                        
                         var textureId = pcmd.GetTexID();
-                        if (cmd_i == 0)
-                            value.scissor = new Rect(clip_min, clip_max - clip_min);
-                        value.texture = UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId);
-                        additionalData.Value = value;
+                        additionalData->Add((
+                            UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId), 
+                            new Rect(clipMin, clipMax - clipMin)));
 
                         // Draw
                         draw_cmds->Add(new GraphicsBuffer.IndirectDrawIndexedArgs()
@@ -210,18 +213,18 @@ namespace com.daxode.imgui
             
             if (EditorApplication.isPlaying)
             {
-                Object.Destroy(material);
-                Object.Destroy(mesh);
+                Object.Destroy(m_Material);
+                Object.Destroy(m_Mesh);
             }
             else
             {
-                Object.DestroyImmediate(material);
-                Object.DestroyImmediate(mesh);
+                Object.DestroyImmediate(m_Material);
+                Object.DestroyImmediate(m_Mesh);
             }
             
-            draw_cmds.Dispose();
-            additionalData.Dispose();
-            data.Dispose();
+            m_DrawCommands.Dispose();
+            m_AdditionalData.Dispose();
+            m_MeshData.Dispose();
         }
     }
 }

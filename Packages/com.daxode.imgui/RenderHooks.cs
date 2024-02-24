@@ -20,11 +20,11 @@ namespace com.daxode.imgui
             // Build texture atlas
             var io = ImGui.GetIO();
             var bd = GetBackendData();
-            io->Fonts->GetTexDataAsAlpha8(out var pixels, out var width, out var height, out var bytesperpixel);
+            io->Fonts->GetTexDataAsRGBA32(out var pixels, out var width, out var height, out var bytesperpixel);
 
             // Upload texture to graphics system
             // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
-            var texture = new Texture2D(width, height, TextureFormat.Alpha8, false, true);
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
             texture.name = "ImGuiFontTexture";
             bd->FontTexture = texture;
             texture.LoadRawTextureData((IntPtr)pixels, width * height * bytesperpixel);

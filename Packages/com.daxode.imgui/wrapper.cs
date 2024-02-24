@@ -4,9 +4,11 @@
 
 using System;
 using System.Runtime.InteropServices;
+using com.daxode.imgui;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using UnityEngine;
 
 static class ImGui
 {
@@ -46,7 +48,29 @@ static class ImGui
 		=> Begin((char*)anotherWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref b));
 	[DllImport("cimgui", EntryPoint = "igBegin")]
 	static extern unsafe bool Begin(char* name, void* p_open = null, ImGuiWindowFlags flags = 0);
+
+	[DllImport("cimgui")]
+	static extern void igImage(ImTextureID user_texture_id, float2 image_size, 
+		float2 uv0, float2 uv1, 
+		float4 tint_col, float4 border_col);
+	public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size, 
+		float2 uv0 = default) {
+		igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size, 
+			uv0, new float2(1, 1), new float4(1, 1, 1, 1), default);
+	}
+    
+	public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size, 
+		float2 uv0, float2 uv1) {
+		igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size, 
+			uv0, uv1, new float4(1, 1, 1, 1), default);
+	}
 	
+	public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size, 
+		float2 uv0, float2 uv1, float4 tint_col, float4 border_col = default) {
+		igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size, 
+			uv0, uv1, tint_col, border_col);
+	}
+
 	public static unsafe void Text(FixedString128Bytes text) => Text((char*)text.GetUnsafePtr());
 	public static unsafe void Text(NativeText text) => Text((char*)text.GetUnsafePtr());
 	[DllImport("cimgui", EntryPoint = "igText")]
@@ -71,12 +95,12 @@ static class ImGui
 	static extern unsafe bool ColorEdit3(char* label, float* col, ImGuiColorEditFlags flags = 0);
 
 	public static unsafe bool Button(FixedString128Bytes button, float2 size = default) 
-		=> Button((char*)button.GetUnsafePtr(), (float2*) UnsafeUtility.AddressOf(ref size));
+		=> Button((char*)button.GetUnsafePtr(), size);
 	[DllImport("cimgui", EntryPoint = "igButton")]
-	static extern unsafe bool Button(char* label, float2* size);   // button
+	static extern unsafe bool Button(char* label, float2 size);   // button
 	
 	[DllImport("cimgui", EntryPoint = "igSameLine")]
-	public static extern void SameLine();
+	public static extern void SameLine(float offset_from_start_x=0.0f, float spacing=-1.0f);
 
 	[DllImport("cimgui", EntryPoint = "igGetIO")]
 	public static extern unsafe ImGuiIO* GetIO();
@@ -738,6 +762,8 @@ enum ImGuiConfigFlags
 	NoMouse                = 1 << 4,   // Instruct imgui to clear mouse position/buttons in NewFrame(). This allows ignoring the mouse information set by the backend.
 	NoMouseCursorChange    = 1 << 5,   // Instruct backend to not alter mouse cursor shape and visibility. Use if the backend cursor changes are interfering with yours and you don't want to use SetMouseCursor() to change mouse cursor. You may want to honor requests from imgui by reading GetMouseCursor() yourself instead.
 
+	DockingEnable = 1 << 6,
+	
 	// User storage (to allow your backend/engine to communicate to code that may be shared between multiple projects. Those flags are NOT used by core Dear ImGui)
 	IsSRGB                 = 1 << 20,  // Application is SRGB-aware.
 	IsTouchScreen          = 1 << 21,  // Application is using a touch screen instead of a mouse.

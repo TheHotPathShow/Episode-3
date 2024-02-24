@@ -37,7 +37,7 @@ namespace com.daxode.imgui
             io->DisplaySize = new float2(cam.pixelWidth, cam.pixelHeight);
             if (math.all(io->DisplaySize > 0))
                 io->DisplayFramebufferScale = new float2(display.x / io->DisplaySize.x, display.y / io->DisplaySize.y);
-            io->FontGlobalScale = 0.5f;
+            io->FontGlobalScale = 1f;
 
             // Setup time step
             // (Accept glfwGetTime() not returning a monotonically increasing value. Seems to happens on disconnecting peripherals and probably on VMs and Emscripten, see #6491, #6189, #6114, #3644)

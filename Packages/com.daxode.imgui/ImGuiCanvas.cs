@@ -14,6 +14,8 @@ namespace com.daxode.imgui
         float f = 0.0f;
         int counter = 0;
 
+        [SerializeField] Texture2D imageToDraw;
+
         unsafe void Update()
         {
             // Start the Dear ImGui frame - plan is to move this to a separate script
@@ -44,6 +46,8 @@ namespace com.daxode.imgui
 
                 var framerate = ImGui.GetIO()->Framerate;
                 ImGui.Text($"Application average {1000.0f / framerate} ms/frame ({framerate} FPS)");
+                // ImGui.SameLine();
+                ImGui.Image(imageToDraw, 500);
                 ImGui.End();
             }
 
@@ -52,7 +56,7 @@ namespace com.daxode.imgui
             {
                 ImGui.Begin("Another Window", ref show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
                 ImGui.Text("Hello from another window!");
-                if (ImGui.Button("Close Me", new float2(50, 50)))
+                if (ImGui.Button("Close Me"))
                     show_another_window = false;
                 ImGui.End();
             }
