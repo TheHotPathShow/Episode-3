@@ -9,6 +9,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
+#pragma warning disable CS0414 // Field is assigned but its value is never used
 
 static class ImGui
 {
@@ -32,22 +33,37 @@ static class ImGui
 	[DllImport("cimgui", EntryPoint = "igEnd")]
 	public static extern void End();
 	
-	[DllImport("cimgui", EntryPoint = "igShowDemoWindow")]
-	public static extern unsafe void ShowDemoWindow(byte* p_open);
+	[DllImport("cimgui")]
+	static extern unsafe void igShowDemoWindow(byte* p_open);
+
+	public static unsafe void ShowDemoWindow(ref bool p_open)
+		=> igShowDemoWindow((byte*)UnsafeUtility.AddressOf(ref p_open));
 	
+	[DllImport("cimgui")]
+	static extern unsafe ImGuiID igDockSpace(ImGuiID id, float2 size,ImGuiDockNodeFlags flags, ImGuiWindowClass* windowClass);
+	public static unsafe ImGuiID DockSpace(ImGuiID id, float2 size = default, ImGuiDockNodeFlags flags = 0, ImGuiWindowClass* windowClass = null)
+		=> igDockSpace(id, size, flags, windowClass);
+	
+	[DllImport("cimgui")]
+	static extern unsafe ImGuiID igGetID_Str(byte* strId);                                      
+	/// calculate unique ID (hash of whole ID stack + given parameter). e.g. if you want to query into ImGuiStorage yourself
+	public static unsafe ImGuiID GetID(FixedString128Bytes strId) 
+		=> igGetID_Str(strId.GetUnsafePtr());
+	
+    
 	[DllImport("cimgui", EntryPoint = "igPushItemWidth")]
 	public static extern void          PushItemWidth(float item_width);                                // push width of items for common large "item+label" widgets. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -FLT_MIN always align width to the right side).
 	[DllImport("cimgui", EntryPoint = "igPopItemWidth")]
 	public static extern void          PopItemWidth();
 	
-	public static unsafe void Begin(FixedString128Bytes anotherWindow) 
-		=> Begin((char*)anotherWindow.GetUnsafePtr());
-	public static unsafe void Begin(FixedString128Bytes anotherWindow, ref bool b) 
-		=> Begin((char*)anotherWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref b));
-	public static unsafe void Begin(NativeText anotherWindow, ref bool b) 
-		=> Begin((char*)anotherWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref b));
+	public static unsafe void Begin(FixedString128Bytes anotherWindow, ImGuiWindowFlags flags = 0) 
+		=> Begin(anotherWindow.GetUnsafePtr(), null, flags);
+	public static unsafe void Begin(FixedString128Bytes anotherWindow, ref bool b, ImGuiWindowFlags flags = 0) 
+		=> Begin(anotherWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref b), flags);
+	public static unsafe void Begin(NativeText anotherWindow, ref bool b, ImGuiWindowFlags flags = 0) 
+		=> Begin((byte*)anotherWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref b), flags);
 	[DllImport("cimgui", EntryPoint = "igBegin")]
-	static extern unsafe bool Begin(char* name, void* p_open = null, ImGuiWindowFlags flags = 0);
+	static extern unsafe bool Begin(byte* name, void* p_open = null, ImGuiWindowFlags flags = 0);
 
 	[DllImport("cimgui")]
 	static extern void igImage(ImTextureID user_texture_id, float2 image_size, 
@@ -70,45 +86,58 @@ static class ImGui
 		igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size, 
 			uv0, uv1, tint_col, border_col);
 	}
+	
+	[DllImport("cimgui")]
+	static extern void igSetNextWindowPos(float2 pos, ImGuiCond cond, float2 pivot);
+	public static void SetNextWindowPos(float2 pos, ImGuiCond cond = 0, float2 pivot = default) 
+		=> igSetNextWindowPos(pos, cond, pivot);
 
-	public static unsafe void Text(FixedString128Bytes text) => Text((char*)text.GetUnsafePtr());
-	public static unsafe void Text(NativeText text) => Text((char*)text.GetUnsafePtr());
+	public static unsafe void Text(FixedString128Bytes text) => Text(text.GetUnsafePtr());
+	public static unsafe void Text(NativeText text) => Text(text.GetUnsafePtr());
 	[DllImport("cimgui", EntryPoint = "igText")]
-	static extern unsafe void Text(char* text);
+	static extern unsafe void Text(byte* text);
 
 	public static unsafe bool Checkbox(FixedString128Bytes demoWindow, ref bool p1)
-	=> Checkbox((char*)demoWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref p1)) > 0;
+	=> Checkbox(demoWindow.GetUnsafePtr(), UnsafeUtility.AddressOf(ref p1)) > 0;
 	[DllImport("cimgui", EntryPoint = "igCheckbox")]
-	static extern unsafe byte Checkbox(char* label, void* v);
+	static extern unsafe byte Checkbox(byte* label, void* v);
 
 	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to) 
-		=> SliderFloat((char*)f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, (char*) new FixedString128Bytes("%.3").GetUnsafePtr(), 0) > 0;
+		=> SliderFloat(f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, new FixedString128Bytes("%.3g").GetUnsafePtr(), 0) > 0;
 
 	[DllImport("cimgui", EntryPoint = "igSliderFloat")]
-	static extern unsafe byte SliderFloat(char* label, float* v, float v_min, float v_max, char* format, ImGuiSliderFlags flags = 0);     // adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
+	static extern unsafe byte SliderFloat(byte* label, float* v, float v_min, float v_max, byte* format, ImGuiSliderFlags flags = 0);     // adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
 	
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref float4 f, ImGuiColorEditFlags flags = 0) 
-		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+		=> ColorEdit3(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref Color f, ImGuiColorEditFlags flags = 0) 
-		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+		=> ColorEdit3(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref float3 f, ImGuiColorEditFlags flags = 0) 
-		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+		=> ColorEdit3(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
 	[DllImport("cimgui", EntryPoint = "igColorEdit3")]
-	static extern unsafe bool ColorEdit3(char* label, float* col, ImGuiColorEditFlags flags = 0);
+	static extern unsafe bool ColorEdit3(byte* label, float* col, ImGuiColorEditFlags flags = 0);
+	
+	public static unsafe bool ColorEdit4(FixedString128Bytes clearColor, ref float4 f, ImGuiColorEditFlags flags = 0) 
+		=> ColorEdit4(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+	public static unsafe bool ColorEdit4(FixedString128Bytes clearColor, ref Color f, ImGuiColorEditFlags flags = 0) 
+		=> ColorEdit4(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+	[DllImport("cimgui", EntryPoint = "igColorEdit4")]
+	static extern unsafe bool ColorEdit4(byte* label, float* col, ImGuiColorEditFlags flags = 0);
 
 	public static unsafe bool Button(FixedString128Bytes button, float2 size = default) 
-		=> Button((char*)button.GetUnsafePtr(), size);
+		=> Button(button.GetUnsafePtr(), size);
 	[DllImport("cimgui", EntryPoint = "igButton")]
-	static extern unsafe bool Button(char* label, float2 size);   // button
+	static extern unsafe bool Button(byte* label, float2 size);   // button
 	
 	[DllImport("cimgui", EntryPoint = "igSameLine")]
 	public static extern void SameLine(float offset_from_start_x=0.0f, float spacing=-1.0f);
 
 	[DllImport("cimgui", EntryPoint = "igGetIO")]
-	public static extern unsafe ImGuiIO* GetIO();
+	static extern unsafe ImGuiIO* igGetIO();
+	public static unsafe ImGuiIO* GetIO() => igGetIO();
 
 	[DllImport("cimgui", EntryPoint = "igStyleColorsDark")]
-	public static extern unsafe void StyleColorsDark(ImGuiStyle* dst = null);
+	public static extern unsafe void StyleColorsDark(out ImGuiStyle dst);
 
 	[DllImport("cimgui", EntryPoint = "igNewFrame")]
 	public static extern void NewFrame();
@@ -116,16 +145,46 @@ static class ImGui
 	[DllImport("cimgui", EntryPoint = "igCreateContext")]
 	public static extern unsafe ImGuiContext* CreateContext(void* shared_font_atlas = null); // ImFontAtlas
 
+	[DllImport("cimgui")]
+	static extern void igSetNextWindowBgAlpha(float alpha);
+	public static void SetNextWindowBgAlpha(float alpha) => igSetNextWindowBgAlpha(alpha);
+	
 	static unsafe bool DebugCheckVersionAndDataLayout(FixedString128Bytes version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx)
-		=> DebugCheckVersionAndDataLayout((char*)version_str.GetUnsafePtr(), sz_io, sz_style, sz_vec2, sz_vec4, sz_drawvert, sz_drawidx);
+		=> DebugCheckVersionAndDataLayout(version_str.GetUnsafePtr(), sz_io, sz_style, sz_vec2, sz_vec4, sz_drawvert, sz_drawidx);
 	
 	[DllImport("cimgui", EntryPoint = "igDebugCheckVersionAndDataLayout")]
-	static extern unsafe bool DebugCheckVersionAndDataLayout(char* version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx); // This is called by IMGUI_CHECKVERSION() macro.
+	static extern unsafe bool DebugCheckVersionAndDataLayout(byte* version_str, int sz_io, int sz_style, int sz_vec2, int sz_vec4, int sz_drawvert, int sz_drawidx); // This is called by IMGUI_CHECKVERSION() macro.
 	
-	[DllImport("cimgui", EntryPoint = "igPushStyleVar")]
-	public static extern unsafe void          PushStyleVar(ImGuiStyleVar idx, float val);                     // modify a style float variable. always use this if you modify the style after NewFrame().
-	[DllImport("cimgui", EntryPoint = "igPushStyleVar")]
-	public static extern unsafe void          PushStyleVar(ImGuiStyleVar idx, float2 val);             // modify a style ImVec2 variable. always use this if you modify the style after NewFrame().
+	
+	[DllImport("cimgui")]
+	static extern void          igPushStyleColor_U32(ImGuiCol idx, Color32 col);
+	/// modify a style color. always use this if you modify the style after NewFrame().
+	public static void PushStyleColor(ImGuiCol idx, Color32 col) => igPushStyleColor_U32(idx, col);
+	
+	[DllImport("cimgui")]
+	static extern void          igPushStyleColor_Vec4(ImGuiCol idx, float4 col);
+	public static void PushStyleColor(ImGuiCol idx, float4 col) => igPushStyleColor_Vec4(idx, col);
+	public static void PushStyleColor(ImGuiCol idx, Color col) => igPushStyleColor_Vec4(idx, UnsafeUtility.As<Color, float4>(ref col));
+	
+	[DllImport("cimgui")]
+	static extern void          igPopStyleColor(int count = 1);
+	public static void PopStyleColor(int count = 1) => igPopStyleColor(count);
+	
+	[DllImport("cimgui")]
+	static extern unsafe void          igPushStyleVar_Float(ImGuiStyleVar idx, float val);
+	/// modify a style float variable. always use this if you modify the style after NewFrame().
+	public static void PushStyleVar(ImGuiStyleVar idx, float val) => igPushStyleVar_Float(idx, val);
+	
+    [DllImport("cimgui")]
+	static extern unsafe void          igPushStyleVar_Vec2(ImGuiStyleVar idx, float2 val);             
+	/// modify a style ImVec2 variable. always use this if you modify the style after NewFrame().
+	public static void PushStyleVar(ImGuiStyleVar idx, float2 val) => igPushStyleVar_Vec2(idx, val);
+
+	[DllImport("cimgui")]
+	static extern unsafe void igPopStyleVar(int count = 1);             
+	/// Pop `count` style variable changes.
+	public static void PopStyleVar(int count = 1) => igPopStyleVar(count);
+	
 	[DllImport("cimgui", EntryPoint = "igSetNextWindowSize")]
 	public static extern unsafe void          SetNextWindowSize(float2 size, ImGuiCond cond = 0);                  // set next window size. set axis to 0.0f to force an auto-fit on this axis. call before Begin()
 	
@@ -142,6 +201,69 @@ enum ImGuiMouseButton : int
 	Middle = 2,
 	COUNT = 5
 };
+
+struct ImGuiWindowClass
+{
+	ImGuiID ClassId;
+	ImGuiID ParentViewportId;
+	ImGuiID FocusRouteParentWindowId;
+	ImGuiViewportFlags ViewportFlagsOverrideSet;
+	ImGuiViewportFlags ViewportFlagsOverrideClear;
+	ImGuiTabItemFlags TabItemFlagsOverrideSet;
+	ImGuiDockNodeFlags DockNodeFlagsOverrideSet;
+	byte dockingAlwaysTabBar;
+	bool DockingAlwaysTabBar => dockingAlwaysTabBar > 0;
+	byte dockingAllowUnclassed;
+	bool DockingAllowUnclassed => dockingAllowUnclassed > 0;
+};
+
+[Flags]
+enum ImGuiViewportFlags
+{
+    None                     = 0,
+    IsPlatformWindow         = 1 << 0,   // Represent a Platform Window
+    IsPlatformMonitor        = 1 << 1,   // Represent a Platform Monitor (unused yet)
+    OwnedByApp               = 1 << 2,   // Platform Window: Was created/managed by the user application? (rather than our backend)
+    NoDecoration             = 1 << 3,   // Platform Window: Disable platform decorations: title bar, borders, etc. (generally set all windows, but if ImGuiConfigFlags_ViewportsDecoration is set we only set this on popups/tooltips)
+    NoTaskBarIcon            = 1 << 4,   // Platform Window: Disable platform task bar icon (generally set on popups/tooltips, or all windows if ImGuiConfigFlags_ViewportsNoTaskBarIcon is set)
+    NoFocusOnAppearing       = 1 << 5,   // Platform Window: Don't take focus when created.
+    NoFocusOnClick           = 1 << 6,   // Platform Window: Don't take focus when clicked on.
+    NoInputs                 = 1 << 7,   // Platform Window: Make mouse pass through so we can drag this window while peaking behind it.
+    NoRendererClear          = 1 << 8,   // Platform Window: Renderer doesn't need to clear the framebuffer ahead (because we will fill it entirely).
+    NoAutoMerge              = 1 << 9,   // Platform Window: Avoid merging this window into another host window. This can only be set via ImGuiWindowClass viewport flags override (because we need to now ahead if we are going to create a viewport in the first place!).
+    TopMost                  = 1 << 10,  // Platform Window: Display on top (for tooltips only).
+    CanHostOtherWindows      = 1 << 11,  // Viewport can host multiple imgui windows (secondary viewports are associated to a single window). // FIXME: In practice there's still probably code making the assumption that this is always and only on the MainViewport. Will fix once we add support for "no main viewport".
+
+    // Output status flags (from Platform)
+    IsMinimized              = 1 << 12,  // Platform Window: Window is minimized, can skip render. When minimized we tend to avoid using the viewport pos/size for clipping window or testing if they are contained in the viewport.
+    IsFocused                = 1 << 13,  // Platform Window: Window is focused (last call to Platform_GetWindowFocus() returned true)
+}
+
+[Flags]
+enum ImGuiDockNodeFlags {
+	None = 0,
+	KeepAliveOnly = 1 << 0,
+	NoDockingOverCentralNode = 1 << 2,
+	PassthruCentralNode = 1 << 3,
+	NoDockingSplit = 1 << 4,
+	NoResize = 1 << 5,
+	AutoHideTabBar = 1 << 6,
+	NoUndocking = 1 << 7,
+}
+
+[Flags]
+enum ImGuiTabItemFlags {
+	None = 0,
+	UnsavedDocument = 1 << 0,
+	SetSelected = 1 << 1,
+	NoCloseWithMiddleMouseButton = 1 << 2,
+	NoPushId = 1 << 3,
+	NoTooltip = 1 << 4,
+	NoReorder = 1 << 5,
+	Leading = 1 << 6,
+	Trailing = 1 << 7,
+	NoAssumedClosure = 1 << 8,
+}
 
 
 // Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
@@ -261,6 +383,7 @@ enum ImGuiSliderFlags
 
 // Flags for ImGui::Begin()
 // (Those are per-window flags. There are shared flags in ImGuiIO: io.ConfigWindowsResizeFromEdges and io.ConfigWindowsMoveFromTitleBarOnly)
+[Flags]
 enum ImGuiWindowFlags
 {
     None                   = 0,
@@ -383,7 +506,7 @@ struct ImGuiStyle
     bool        AntiAliasedFill;            // Enable anti-aliased edges around filled shapes (rounded rectangles, circles, etc.). Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
     float       CurveTessellationTol;       // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
     float       CircleTessellationMaxError; // Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
-    ColorArray  Colors;
+    internal ColorArray  Colors;
 
     // Behaviors
     // (It is possible to modify those fields mid-frame if specific behavior need it, unlike e.g. configuration fields in ImGuiIO)
@@ -439,8 +562,8 @@ unsafe struct ColorArray
 {
 	[FieldOffset(0)]
 	fixed float Values[(int)ImGuiCol.COUNT*4];
-	
-	ref float4 this[int index] => ref UnsafeUtility.ArrayElementAsRef<float4>(UnsafeUtility.AddressOf(ref this), index);
+
+	internal ref float4 this[ImGuiCol index] => ref UnsafeUtility.ArrayElementAsRef<float4>(UnsafeUtility.AddressOf(ref this), (int)index);
 }
 
 enum ImGuiCol
@@ -808,7 +931,7 @@ unsafe struct ImGuiIO
     public ImFontAtlas* Fonts;                          // <auto>           // Font atlas: load, rasterize and pack one or more fonts into a single texture. // ImFontAtlas
     public float       FontGlobalScale;                // = 1.0f           // Global scale all fonts
     byte        FontAllowUserScaling;           // = false          // Allow user scaling text of individual window with CTRL+Wheel.
-    void*     FontDefault;                    // = NULL           // Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0]. // ImFont
+    public ImFontAtlas*     FontDefault;                    // = NULL           // Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0]. // ImFont
     public float2      DisplayFramebufferScale;        // = (1, 1)         // For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
 
     // Docking options (when ImGuiConfigFlags_DockingEnable is set)
@@ -818,9 +941,9 @@ unsafe struct ImGuiIO
     byte        ConfigDockingTransparentPayload;// = false          // [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
 
     // Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-    byte        ConfigViewportsNoAutoMerge;     // = false;         // Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set ImGuiViewportFlags_NoAutoMerge on individual viewport.
-    byte        ConfigViewportsNoTaskBarIcon;   // = false          // Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
-    byte        ConfigViewportsNoDecoration;    // = true           // Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, ImGuiViewportFlags_NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
+    byte        ConfigViewportsNoAutoMerge;     // = false;         // Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set NoAutoMerge on individual viewport.
+    byte        ConfigViewportsNoTaskBarIcon;   // = false          // Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, NoTaskBarIcon will be set on it.
+    byte        ConfigViewportsNoDecoration;    // = true           // Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
     byte        ConfigViewportsNoDefaultParent; // = false          // Disable default OS parenting to main viewport for secondary viewports. By default, viewports are marked with ParentViewportId = <main_viewport>, expecting the platform backend to setup a parent/child relationship between the OS windows (some backend may ignore this). Set to true if you want the default to be 0, then all viewports will be top-level OS windows.
 
     // Miscellaneous options
@@ -1001,7 +1124,7 @@ unsafe struct ImGuiIO
     float       MouseWheel;                         // Mouse wheel Vertical: 1 unit scrolls about 5 lines text. >0 scrolls Up, <0 scrolls Down. Hold SHIFT to turn vertical scroll into horizontal scroll.
     float       MouseWheelH;                        // Mouse wheel Horizontal. >0 scrolls Left, <0 scrolls Right. Most users don't have a mouse with a horizontal wheel, may not be filled by all backends.
     ImGuiMouseSource MouseSource;                   // Mouse actual input peripheral (Mouse/TouchScreen/Pen).
-    ImGuiID     MouseHoveredViewport;               // (Optional) Modify using io.AddMouseViewportEvent(). With multi-viewports: viewport the OS mouse is hovering. If possible _IGNORING_ viewports with the ImGuiViewportFlags_NoInputs flag is much better (few backends can handle that). Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
+    ImGuiID     MouseHoveredViewport;               // (Optional) Modify using io.AddMouseViewportEvent(). With multi-viewports: viewport the OS mouse is hovering. If possible _IGNORING_ viewports with the NoInputs flag is much better (few backends can handle that). Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
     byte        KeyCtrl;                            // Keyboard modifier down: Control
     byte        KeyShift;                           // Keyboard modifier down: Shift
     byte        KeyAlt;                             // Keyboard modifier down: Alt
@@ -1070,7 +1193,11 @@ unsafe struct ImFontAtlas
     // void              ClearInputData();           // Clear input data (all ImFontConfig structures including sizes, TTF data, glyph ranges, etc.) = all the data used to build the texture and fonts.
     // void              ClearTexData();             // Clear output texture data (CPU side). Saves RAM once the texture has been copied to graphics memory.
     // void              ClearFonts();               // Clear output font data (glyphs storage, UV coordinates).
-    // void              Clear();                    // Clear all input and output.
+
+    [DllImport("cimgui")]
+    static extern void ImFontAtlas_Clear(ImFontAtlas* data);
+    /// Clear all input and output.
+    public void Clear() => ImFontAtlas_Clear((ImFontAtlas*)UnsafeUtility.AddressOf(ref this));
 
     // Build atlas, retrieve pixel data.
     // User is in charge of copying the pixels into graphics memory (e.g. create a texture with your engine). Then store your texture handle with SetTexID().
@@ -1087,7 +1214,8 @@ unsafe struct ImFontAtlas
     static extern void              ImFontAtlas_GetTexDataAsRGBA32(ImFontAtlas* main, out byte* out_pixels, out int out_width, out int out_height, out int out_bytes_per_pixel);  // 4 bytes-per-pixel
 	public void GetTexDataAsRGBA32(out byte* out_pixels, out int out_width, out int out_height, out int out_bytes_per_pixel) 
 		=> ImFontAtlas_GetTexDataAsRGBA32((ImFontAtlas*)UnsafeUtility.AddressOf(ref this), out out_pixels, out out_width, out out_height, out out_bytes_per_pixel);
-	// bool                        IsBuilt() const             { return Fonts.Size > 0 && TexReady; } // Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
+
+	internal bool                        IsBuilt() => Fonts.Size > 0 && TexReady; // Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
     public void                        SetTexID(ImTextureID id)    { TexID = id; }
 
     //-------------------------------------------
@@ -1148,9 +1276,9 @@ unsafe struct ImFontAtlas
     int                         TexHeight;          // Texture height calculated during Build().
     float2                      TexUvScale;         // = (1.0f/TexWidth, 1.0f/TexHeight)
     float2                      TexUvWhitePixel;    // Texture coordinates to a white pixel
-    ImVectorRaw           Fonts;              // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font. // ImFont*
+    public ImVector<Ptr<ImFont>>           Fonts;              // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font. // ImFont*
     ImVectorRaw CustomRects;    // Rectangles for packing custom texture data into the atlas. // ImFontAtlasCustomRect
-    ImVectorRaw      ConfigData;         // Configuration data // ImFontConfig
+    ImVector<ImFontConfig>      ConfigData;         // Configuration data
     TexUvLinesArray                      TexUvLines;  // UVs for baked anti-aliased lines
 
     // [Internal] Font builder

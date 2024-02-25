@@ -1,49 +1,95 @@
-﻿using Unity.Collections.LowLevel.Unsafe;
+﻿using System;
+using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace com.daxode.imgui
 {
+    [BurstCompile]
     public class ImGuiCanvas : MonoBehaviour
     {
         // Our state
-        bool show_demo_window = true;
-        bool show_another_window = false;
-        
-        Color clear_color = new Color(0.45f, 0.55f, 0.60f, 1.00f);
-        float f = 0.0f;
-        int counter = 0;
+        struct MyGUIData
+        {
+            public bool showDemoWindow;
+            public bool showAnotherWindow;
+            public Color meshColor;
+            public float alpha;
+            public int counter;
+            public UnityObjRef<Texture2D> imageToDraw;
+            public bool shouldChangeColor;
+        }
+
+        MyGUIData m_GUIData;
+
+        void Start()
+        {
+            m_GUIData.showDemoWindow = true;
+            m_GUIData.meshColor = new Color(0.45f, 0.55f, 0.60f, 1.00f);
+            m_GUIData.imageToDraw = imageToDraw;
+        }
 
         [SerializeField] Texture2D imageToDraw;
         [SerializeField] MeshRenderer meshRendererToChange;
 
         unsafe void Update()
         {
-            // Start the Dear ImGui frame - plan is to move this to a separate script
+            // Start the Dear ImGui frame - plan is to move this to a separate script at start of frame
             if (ImGui.GetCurrentContext() == null || RenderHooks.GetBackendData() == null)
                 return;
             RenderHooks.NewFrame();
             InputAndWindowHooks.NewFrame();
             ImGui.NewFrame();
             
+            // The GUI
+            BurstedGUI(ref m_GUIData);
+            if (m_GUIData.shouldChangeColor)
+                meshRendererToChange.material.color = m_GUIData.meshColor;
+        }
+
+
+        // [BurstCompile] still need to figure out how to call float2 functions o.o - how is that the hard thing and not strings lol
+        static void BurstedGUI(ref MyGUIData guiData)
+        {
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window)
-                 ImGui.ShowDemoWindow((byte*) UnsafeUtility.AddressOf(ref show_demo_window));
+            if (guiData.showDemoWindow)
+                ImGui.ShowDemoWindow(ref guiData.showDemoWindow);
+
+            // Create DockSpace
+            {
+                var dockSpaceWindowFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
+                dockSpaceWindowFlags |= ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoNavFocus | ImGuiWindowFlags.NoBackground;
+                
+                ImGui.SetNextWindowPos(0);
+                unsafe { ImGui.SetNextWindowSize(ImGui.GetIO()->DisplaySize); }
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0);
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0);
+                ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new float2(0));
+                ImGui.Begin("Cool DockSpace", dockSpaceWindowFlags);
+                unsafe { ImGui.DockSpace(ImGui.GetID("DockSpace"), 0, ImGuiDockNodeFlags.PassthruCentralNode); }
+                ImGui.End();
+                ImGui.PopStyleVar(3);
+            }
             
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
-                ImGui.Begin("Hello, world!");                                    // Create a window called "Hello, world!" and append into it.
-                ImGui.Text("This is some useful text.");                                     // Display some text (you can use a format strings too)
-                ImGui.Checkbox("Demo Window", ref show_demo_window);              // Edit bools storing our window open/close state
-                ImGui.Checkbox("Another Window", ref show_another_window);
-                
-                // ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);              // Edit 1 float using a slider from 0.0f to 1.0f
-                if (ImGui.ColorEdit3("clear color", ref clear_color)) // Edit 3 floats representing a color
-                    meshRendererToChange.material.color = clear_color;
-                if (ImGui.Button("Button"))                                                 // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
+                // Create a window called "Hello, world!" and append into it.
+                ImGui.Begin("Hello, world!"); 
+                ImGui.Text("This is some useful text.");
+                ImGui.Checkbox("Demo Window", ref guiData.showDemoWindow);
                 ImGui.SameLine();
-                ImGui.Text($"counter = {counter}");
+                ImGui.Checkbox("Another Window", ref guiData.showAnotherWindow);
+                
+                ImGui.SliderFloat("Some alpha value:", ref guiData.alpha, 0.0f, 1.0f);
+                guiData.shouldChangeColor = ImGui.ColorEdit3("Color of mesh", ref guiData.meshColor);
+                
+                // Make a counter
+                if (ImGui.Button("Button"))
+                    guiData.counter++;
+                ImGui.SameLine();
+                ImGui.Text($"counter = {guiData.counter}");
+                
+                // Draw 20 buttons, 5 in every row
                 for (int i = 0; i < 20; i++)
                 {
                     if (i % 5 != 0)
@@ -51,20 +97,26 @@ namespace com.daxode.imgui
                     ImGui.Button($"No.{i} Button");
                 }
 
-                var framerate = ImGui.GetIO()->Framerate;
-                ImGui.Text($"Application average {1000.0f / framerate} ms/frame ({framerate} FPS)");
-                // ImGui.SameLine();
-                ImGui.Image(imageToDraw, 500);
+                // Display framerate
+                unsafe
+                {
+                    var framerate = ImGui.GetIO()->Framerate;
+                    ImGui.Text($"Application average {1000.0f / framerate} ms/frame ({framerate} FPS)");
+                }
+                
+                // Draw an image
+                ImGui.Image(guiData.imageToDraw, 500);
+                
                 ImGui.End();
             }
 
             // 3. Show another simple window.
-            if (show_another_window)
+            if (guiData.showAnotherWindow)
             {
-                ImGui.Begin("Another Window", ref show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+                ImGui.Begin("Another Window", ref guiData.showAnotherWindow);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
                 ImGui.Text("Hello from another window!");
                 if (ImGui.Button("Close Me"))
-                    show_another_window = false;
+                    guiData.showAnotherWindow = false;
                 ImGui.End();
             }
         }

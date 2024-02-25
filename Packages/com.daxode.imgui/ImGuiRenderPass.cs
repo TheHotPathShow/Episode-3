@@ -52,14 +52,21 @@ namespace com.daxode.imgui
             
             // Setup Dear ImGui context
             ImGui.CheckVersion();
-            ImGui.CreateContext();
+            if (ImGui.GetCurrentContext() == null)
+            {
+                ImGui.CreateContext();
+            }
+            else
+            {
+                ImGui.GetIO()->Fonts->Clear();
+            }
             var io = ImGui.GetIO();
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;     // Enable Keyboard Controls
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableGamepad;      // Enable Gamepad Controls
             io->ConfigFlags |= ImGuiConfigFlags.DockingEnable;         // Enable Docking
             
             // Setup Dear ImGui style
-            ImGui.StyleColorsDark();
+            ImGui.StyleColorsDark(out _);
 
             // Setup Platform/Renderer backends
             InputAndWindowHooks.Init();
@@ -219,10 +226,14 @@ namespace com.daxode.imgui
 
         public bool AlreadyDisposed => !m_DrawCommands.IsCreated;
         
-        public void Dispose()
+        public unsafe void Dispose()
         {
-            ImGui.NewFrame();
-            ImGui.Render();
+            var drawData = ImGui.GetDrawData();
+            if (drawData != null && drawData->Valid > 0 && ImGui.GetIO()->Fonts->IsBuilt())
+            {
+                ImGui.NewFrame();
+                ImGui.Render();
+            }
             
             // Cleanup
             RenderHooks.Shutdown();
