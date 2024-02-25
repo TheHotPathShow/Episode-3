@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -11,16 +12,22 @@ using Object = UnityEngine.Object;
 
 namespace com.daxode.imgui
 {
+    [BurstCompile]
     public class ImGuiRenderPass : ScriptableRenderPass, IDisposable
     {
         Mesh m_Mesh;
         Material m_Material;
-        NativeReference<Mesh.MeshData> m_MeshData;
         NativeArray<VertexAttributeDescriptor> m_VertexAttributes;
         
         GraphicsBuffer m_DrawCmdBuffer;
-        NativeList<GraphicsBuffer.IndirectDrawIndexedArgs> m_DrawCommands;
-        NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)> m_AdditionalData;
+        internal NativeList<GraphicsBuffer.IndirectDrawIndexedArgs> m_DrawCommands;
+        NativeList<DrawCmdData> m_AdditionalData;
+        [StructLayout(LayoutKind.Sequential)]
+        struct DrawCmdData
+        {
+            public UnityObjRef<Texture2D> texture;
+            public Rect scissor;
+        }
         
         static readonly int k_MainTex = Shader.PropertyToID("_MainTex");
         MaterialPropertyBlock m_PropertyBlock;
@@ -30,9 +37,8 @@ namespace com.daxode.imgui
             m_Material = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/ImGuiDrawShader"));
             renderPassEvent = RenderPassEvent.AfterRendering;
             m_DrawCommands = new NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>(100, Allocator.Persistent);
-            m_AdditionalData = new NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>(100, Allocator.Persistent);
+            m_AdditionalData = new NativeList<DrawCmdData>(100, Allocator.Persistent);
             m_Mesh = new Mesh();
-            m_MeshData = new NativeReference<Mesh.MeshData>(Allocator.Persistent);
             m_DrawCmdBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1000, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             m_VertexAttributes = new NativeArray<VertexAttributeDescriptor>(3, Allocator.Persistent)
             {
@@ -58,7 +64,8 @@ namespace com.daxode.imgui
             // Setup Platform/Renderer backends
             InputAndWindowHooks.Init();
             RenderHooks.Init();
-            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 72.0f);
+            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 48.0f);
+            // io->Fonts->AddFontDefault();
         }
 
         public override unsafe void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -67,15 +74,16 @@ namespace com.daxode.imgui
                 return;
             
             // Rendering
+            // RenderHooks.NewFrame();
             ImGui.Render();
             
             var dataArray = Mesh.AllocateWritableMeshData(1);
-            m_MeshData.Value = dataArray[0];
+            var meshData = dataArray[0];
             m_DrawCommands.Clear();
             m_AdditionalData.Clear();
-            FillDrawCommandsAndAdditionalData(ImGui.GetDrawData(), m_MeshData, m_VertexAttributes,
+            FillDrawCommandsAndAdditionalData(ImGui.GetDrawData(), ref meshData, ref m_VertexAttributes,
                 (NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>*)UnsafeUtility.AddressOf(ref m_DrawCommands), 
-                (NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>*)UnsafeUtility.AddressOf(ref m_AdditionalData));
+                (NativeList<DrawCmdData>*)UnsafeUtility.AddressOf(ref m_AdditionalData));
             Mesh.ApplyAndDisposeWritableMeshData(dataArray, m_Mesh, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontResetBoneBounds);
             m_Mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000);
             m_DrawCmdBuffer.SetCounterValue((uint)m_DrawCommands.Length);
@@ -89,6 +97,9 @@ namespace com.daxode.imgui
             var cmd = CommandBufferPool.Get("ImGuiRenderPass");
             for (int i = 0; i < m_DrawCommands.Length; i++)
             {
+                if (m_AdditionalData[i].texture.Value == null)
+                    continue;
+                
                 m_PropertyBlock.SetTexture(k_MainTex, m_AdditionalData[i].texture);
                 cmd.EnableScissorRect(m_AdditionalData[i].scissor);
                 cmd.DrawMeshInstancedIndirect(
@@ -107,10 +118,10 @@ namespace com.daxode.imgui
 
         [BurstCompile]
         unsafe static void FillDrawCommandsAndAdditionalData(
-            ImDrawData* draw_data, NativeReference<Mesh.MeshData> data,
-            NativeArray<VertexAttributeDescriptor> vertexAttributes,
+            ImDrawData* draw_data, ref Mesh.MeshData data,
+            ref NativeArray<VertexAttributeDescriptor> vertexAttributes,
             NativeList<GraphicsBuffer.IndirectDrawIndexedArgs>* draw_cmds,
-            NativeList<(UnityObjRef<Texture2D> texture, Rect scissor)>* additionalData)
+            NativeList<DrawCmdData>* additionalData)
         {
             // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
             var frameSize = (int2)(draw_data->DisplaySize * draw_data->FramebufferScale.x);
@@ -118,7 +129,7 @@ namespace com.daxode.imgui
                 return;
 
             // Allocate array to store enough vertex/index buffers
-            var meshData = data.Value;
+            var meshData = data;
             if (draw_data->TotalVtxCount > 0)
             {
                 // Create or resize the vertex/index buffers
@@ -178,9 +189,11 @@ namespace com.daxode.imgui
                             continue;
                         
                         var textureId = pcmd.GetTexID();
-                        additionalData->Add((
-                            UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId), 
-                            new Rect(clipMin, clipMax - clipMin)));
+                        additionalData->Add(new DrawCmdData
+                        {
+                            scissor = new Rect(clipMin, clipMax - clipMin),
+                            texture = UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId),
+                        });
 
                         // Draw
                         draw_cmds->Add(new GraphicsBuffer.IndirectDrawIndexedArgs()
@@ -204,13 +217,16 @@ namespace com.daxode.imgui
                 MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontResetBoneBounds);
         }
 
+        public bool AlreadyDisposed => !m_DrawCommands.IsCreated;
+        
         public void Dispose()
         {
             // Cleanup
             RenderHooks.Shutdown();
             InputAndWindowHooks.Shutdown();
             // ImGui.DestroyContext();
-            
+
+#if UNITY_EDITOR
             if (EditorApplication.isPlaying)
             {
                 Object.Destroy(m_Material);
@@ -221,10 +237,13 @@ namespace com.daxode.imgui
                 Object.DestroyImmediate(m_Material);
                 Object.DestroyImmediate(m_Mesh);
             }
+#else
+            Object.Destroy(m_Material);
+            Object.Destroy(m_Mesh);
+#endif
             
             m_DrawCommands.Dispose();
             m_AdditionalData.Dispose();
-            m_MeshData.Dispose();
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace com.daxode.imgui
@@ -11,15 +10,16 @@ namespace com.daxode.imgui
         
         public override void Create()
         {
-            m_RenderPass = new ImGuiRenderPass();
+            if (m_RenderPass == null || m_RenderPass.AlreadyDisposed)
+                m_RenderPass = new ImGuiRenderPass();
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer,
             ref RenderingData renderingData) => renderer.EnqueuePass(m_RenderPass);
-
+        
         protected override void Dispose(bool disposing)
         {
-            if (disposing) 
+            if (disposing && !m_RenderPass.AlreadyDisposed) 
                 m_RenderPass.Dispose();
         }
     }

@@ -82,12 +82,14 @@ static class ImGui
 	static extern unsafe byte Checkbox(char* label, void* v);
 
 	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to) 
-		=> SliderFloat((char*)f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, (char*) new FixedString128Bytes("%.3").GetUnsafePtr(), 0);
+		=> SliderFloat((char*)f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, (char*) new FixedString128Bytes("%.3").GetUnsafePtr(), 0) > 0;
 
 	[DllImport("cimgui", EntryPoint = "igSliderFloat")]
-	static extern unsafe bool SliderFloat(char* label, float* v, float v_min, float v_max, char* format, ImGuiSliderFlags flags = 0);     // adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
+	static extern unsafe byte SliderFloat(char* label, float* v, float v_min, float v_max, char* format, ImGuiSliderFlags flags = 0);     // adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
 	
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref float4 f, ImGuiColorEditFlags flags = 0) 
+		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
+	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref Color f, ImGuiColorEditFlags flags = 0) 
 		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref float3 f, ImGuiColorEditFlags flags = 0) 
 		=> ColorEdit3((char*)clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
@@ -895,33 +897,65 @@ unsafe struct ImGuiIO
     //------------------------------------------------------------------
 
     // Input Functions
-//     void  AddKeyEvent(ImGuiKey key, byte down);                   // Queue a new key down/up event. Key should be "translated" (as in, generally ImGuiKey_A matches the key end-user would use to emit an 'A' character)
-//     void  AddKeyAnalogEvent(ImGuiKey key, byte down, float v);    // Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
+    
+    [DllImport("cimgui")]
+    static extern void  ImGuiIO_AddKeyEvent(ImGuiIO* data, ImGuiKey key, byte down);                   
+    /// Queue a new key down/up event. Key should be "translated" (as in, generally ImGuiKey_A matches the key end-user would use to emit an 'A' character)
+    public void  AddKeyEvent(ImGuiKey key, bool down) => ImGuiIO_AddKeyEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), key, down?(byte)1:(byte)0);              
+    
+    [DllImport("cimgui")]
+    static extern void  ImGuiIO_AddKeyAnalogEvent(ImGuiIO* data, ImGuiKey key, byte down, float v);    
+    /// Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
+    public void  AddKeyAnalogEvent(ImGuiKey key, byte down, float v) => ImGuiIO_AddKeyAnalogEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), key, down, v);
+    
     [DllImport("cimgui")] 
 	static extern void  ImGuiIO_AddMousePosEvent(ImGuiIO* data,float x, float y);                     // Queue a mouse position update. Use -FLT_MAX,-FLT_MAX to signify no mouse (e.g. app not focused and not hovered)
 	public unsafe void AddMousePosEvent(float x, float y) => ImGuiIO_AddMousePosEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), x, y); 
+	
 	[DllImport("cimgui")]
 	static extern void  ImGuiIO_AddMouseButtonEvent(ImGuiIO* data, int button, byte down);             // Queue a mouse button change
 	public void AddMouseButtonEvent(int button, byte down) => ImGuiIO_AddMouseButtonEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), button, down);
+	
 	[DllImport("cimgui")]
     static extern void  ImGuiIO_AddMouseWheelEvent(ImGuiIO* data, float wheel_x, float wheel_y);       // Queue a mouse wheel update. wheel_y<0: scroll down, wheel_y>0: scroll up, wheel_x<0: scroll right, wheel_x>0: scroll left.
     public void AddMouseWheelEvent(float wheel_x, float wheel_y) => ImGuiIO_AddMouseWheelEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), wheel_x, wheel_y);
-//     void  AddMouseSourceEvent(ImGuiMouseSource source);           // Queue a mouse source change (Mouse/TouchScreen/Pen)
-//     void  AddMouseViewportEvent(ImGuiID id);                      // Queue a mouse hovered viewport. Requires backend to set ImGuiBackendFlags_HasMouseHoveredViewport to call this (for multi-viewport support).
+	
+    [DllImport("cimgui")]
+    static extern void  ImGuiIO_AddMouseSourceEvent(ImGuiIO* data, ImGuiMouseSource source);
+	/// Queue a mouse source change (Mouse/TouchScreen/Pen)
+    public void AddMouseSourceEvent(ImGuiMouseSource source) => ImGuiIO_AddMouseSourceEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), source);
+	
+	// void  AddMouseViewportEvent(ImGuiID id);                      // Queue a mouse hovered viewport. Requires backend to set ImGuiBackendFlags_HasMouseHoveredViewport to call this (for multi-viewport support).
+	
 	[DllImport("cimgui")]
-	public static extern void  ImGuiIO_AddFocusEvent(ImGuiIO* data, byte focused);                            // Queue a gain/loss of focus for the application (generally based on OS/platform focus of your window)
-	public void AddFocusEvent(byte focused) => ImGuiIO_AddFocusEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), focused);
-//     void  AddInputCharacter(unsigned int c);                      // Queue a new character input
-//     void  AddInputCharacterUTF16(ImWchar16 c);                    // Queue a new character input from a UTF-16 character, it can be a surrogate
-//     void  AddInputCharactersUTF8(const char* str);                // Queue a new characters input from a UTF-8 string
-//
+	public static extern void  ImGuiIO_AddFocusEvent(ImGuiIO* data, byte focused);                            
+	/// Queue a gain/loss of focus for the application (generally based on OS/platform focus of your window)
+	public void AddFocusEvent(bool focused) => ImGuiIO_AddFocusEvent((ImGuiIO*)UnsafeUtility.AddressOf(ref this), focused?(byte)1:(byte)0);
+
+	//     void  AddInputCharacter(unsigned int c);                      // Queue a new character input
+	//     void  AddInputCharacterUTF16(ImWchar16 c);                    // Queue a new character input from a UTF-16 character, it can be a surrogate
+	
+	[DllImport("cimgui")]
+    static extern void  ImGuiIO_AddInputCharactersUTF8(ImGuiIO* data, char* str);
+    /// Queue a new characters input from a UTF-8 string
+    public void  AddInputCharactersUTF8(FixedString128Bytes str) => ImGuiIO_AddInputCharactersUTF8((ImGuiIO*)UnsafeUtility.AddressOf(ref this), (char*)str.GetUnsafePtr());
+    
 //     void  SetKeyEventNativeData(ImGuiKey key, int native_keycode, int native_scancode, int native_legacy_index = -1); // [Optional] Specify index for legacy <1.87 IsKeyXXX() functions with native indices + specify native keycode, scancode.
 //     void  SetAppAcceptingEvents(byte accepting_events);           // Set master flag for accepting key/mouse/text events (default to true). Useful if you have native dialog boxes that are interrupting your application loop/refresh, and you want to disable events being queued while your app is frozen.
-//     void  ClearEventsQueue();                                     // Clear all incoming events.
-//     void  ClearInputKeys();                                       // Clear current keyboard/mouse/gamepad state + current frame text input buffer. Equivalent to releasing all keys/buttons.
-// #if !IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-//     void  ClearInputCharacters();                                 // [Obsoleted in 1.89.8] Clear the current frame text input buffer. Now included within ClearInputKeys().
-// #endif
+	
+	[DllImport("cimgui")]
+	static extern void  ImGuiIO_ClearEventsQueue(ImGuiIO* data);                                     
+	/// Clear all incoming events.
+	public void  ClearEventsQueue() => ImGuiIO_ClearEventsQueue((ImGuiIO*)UnsafeUtility.AddressOf(ref this));                                     
+	
+	[DllImport("cimgui")]
+    static extern void  ImGuiIO_ClearInputKeys(ImGuiIO* data);                                      
+    /// Clear current keyboard/mouse/gamepad state + current frame text input buffer. Equivalent to releasing all keys/buttons.
+	public void  ClearInputKeys() => ImGuiIO_ClearInputKeys((ImGuiIO*)UnsafeUtility.AddressOf(ref this));                                     
+
+    // #if !IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+	//    void  ClearInputCharacters();                                 // [Obsoleted in 1.89.8] Clear the current frame text input buffer. Now included within ClearInputKeys().
+	// #endif
 
     //------------------------------------------------------------------
     // Output - Updated by NewFrame() or EndFrame()/Render()

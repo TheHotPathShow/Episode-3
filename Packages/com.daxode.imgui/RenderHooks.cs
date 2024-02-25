@@ -67,7 +67,11 @@ namespace com.daxode.imgui
             var bd = GetBackendData();
             if (bd->FontTexture.InstanceID == 0) 
                 return;
+#if UNITY_EDITOR
+            UnityEngine.Object.DestroyImmediate(bd->FontTexture.Value);
+#else
             UnityEngine.Object.Destroy(bd->FontTexture.Value);
+#endif
             io->Fonts->SetTexID(default);
             bd->FontTexture = default;
         }
@@ -80,12 +84,15 @@ namespace com.daxode.imgui
         internal static unsafe void Shutdown()
         {
             var bd = GetBackendData();
+            if (bd == null) 
+                return;
             Debug.Assert(bd != null, "No renderer backend to shutdown, or already shutdown?");
             var io = ImGui.GetIO();
             
             DestroyDeviceObjects();
             io->BackendRendererName = null; // currently leaks memory
             io->BackendRendererUserData = null;
+            ImGui.GetIO();
             UnsafeUtility.Free(bd, Allocator.Persistent);
         }
     }

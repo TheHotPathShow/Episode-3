@@ -10,11 +10,12 @@ namespace com.daxode.imgui
         bool show_demo_window = true;
         bool show_another_window = false;
         
-        float4 clear_color = new float4(0.45f, 0.55f, 0.60f, 1.00f);
+        Color clear_color = new Color(0.45f, 0.55f, 0.60f, 1.00f);
         float f = 0.0f;
         int counter = 0;
 
         [SerializeField] Texture2D imageToDraw;
+        [SerializeField] MeshRenderer meshRendererToChange;
 
         unsafe void Update()
         {
@@ -36,13 +37,19 @@ namespace com.daxode.imgui
                 ImGui.Checkbox("Demo Window", ref show_demo_window);              // Edit bools storing our window open/close state
                 ImGui.Checkbox("Another Window", ref show_another_window);
                 
-                ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);              // Edit 1 float using a slider from 0.0f to 1.0f
-                ImGui.ColorEdit3("clear color", ref clear_color);                            // Edit 3 floats representing a color
-                
+                // ImGui.SliderFloat("float", ref f, 0.0f, 1.0f);              // Edit 1 float using a slider from 0.0f to 1.0f
+                if (ImGui.ColorEdit3("clear color", ref clear_color)) // Edit 3 floats representing a color
+                    meshRendererToChange.material.color = clear_color;
                 if (ImGui.Button("Button"))                                                 // Buttons return true when clicked (most widgets return true when edited/activated)
                     counter++;
                 ImGui.SameLine();
                 ImGui.Text($"counter = {counter}");
+                for (int i = 0; i < 20; i++)
+                {
+                    if (i % 5 != 0)
+                        ImGui.SameLine();
+                    ImGui.Button($"No.{i} Button");
+                }
 
                 var framerate = ImGui.GetIO()->Framerate;
                 ImGui.Text($"Application average {1000.0f / framerate} ms/frame ({framerate} FPS)");
