@@ -64,7 +64,7 @@ namespace com.daxode.imgui
             // Setup Platform/Renderer backends
             InputAndWindowHooks.Init();
             RenderHooks.Init();
-            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 48.0f);
+            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 20.0f);
             // io->Fonts->AddFontDefault();
         }
 
@@ -221,6 +221,9 @@ namespace com.daxode.imgui
         
         public void Dispose()
         {
+            ImGui.NewFrame();
+            ImGui.Render();
+            
             // Cleanup
             RenderHooks.Shutdown();
             InputAndWindowHooks.Shutdown();
