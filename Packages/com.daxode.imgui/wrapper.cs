@@ -105,8 +105,40 @@ static class ImGui
 	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to) 
 		=> SliderFloat(f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, new FixedString128Bytes("%.3g").GetUnsafePtr(), 0) > 0;
 
+	/// adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
 	[DllImport("cimgui", EntryPoint = "igSliderFloat")]
-	static extern unsafe byte SliderFloat(byte* label, float* v, float v_min, float v_max, byte* format, ImGuiSliderFlags flags = 0);     // adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
+	static extern unsafe byte SliderFloat(byte* label, float* v, float v_min, float v_max, byte* format, ImGuiSliderFlags flags = 0);     
+	
+	[DllImport("cimgui")]
+	static extern unsafe byte igInputText(byte* label, byte* buf, int buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data);
+	public static unsafe bool InputText(FixedString128Bytes label, ref FixedString512Bytes buf, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = default) 
+		=> igInputText(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, flags, callback, null) > 0; // user_data is in overload to avoid unsafe parameter
+	public static unsafe bool InputText(FixedString128Bytes label, ref FixedString512Bytes buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData) 
+		=> igInputText(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, flags, callback, userData) > 0;
+	
+	[DllImport("cimgui")]
+	static extern unsafe byte igInputTextMultiline(byte* label,byte* buf,int buf_size,float2 size,ImGuiInputTextFlags flags,ImGuiInputTextCallback callback, void* user_data);
+	public static unsafe bool InputTextMultiline(FixedString128Bytes label, ref FixedString512Bytes buf, float2 size = default, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = default) 
+		=> igInputTextMultiline(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, size, flags, callback, null) > 0; // user_data is in overload to avoid unsafe parameter
+	public static unsafe bool InputTextMultiline(FixedString128Bytes label, ref FixedString512Bytes buf, float2 size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData) 
+		=> igInputTextMultiline(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, size, flags, callback, userData) > 0;
+	
+	public static unsafe bool InputTextMultiline(FixedString128Bytes label, ref NativeText buf, float2 size = default, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = default) 
+		=> igInputTextMultiline(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, size, flags, callback, null) > 0; // user_data is in overload to avoid unsafe parameter
+	public static unsafe bool InputTextMultiline(FixedString128Bytes label, ref NativeText buf, float2 size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData) 
+		=> igInputTextMultiline(label.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, size, flags, callback, userData) > 0;
+	
+	[DllImport("cimgui")]
+	static extern unsafe byte igInputTextWithHint(byte* label,byte* hint,byte* buf,int buf_size,ImGuiInputTextFlags flags,ImGuiInputTextCallback callback,void* user_data);
+	public static unsafe bool InputTextWithHint(FixedString128Bytes label, FixedString128Bytes hint, ref FixedString512Bytes buf, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = default) 
+		=> igInputTextWithHint(label.GetUnsafePtr(), hint.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, flags, callback, null) > 0; // user_data is in overload to avoid unsafe parameter
+	public static unsafe bool InputTextWithHint(FixedString128Bytes label, FixedString128Bytes hint, ref FixedString512Bytes buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* userData) 
+		=> igInputTextWithHint(label.GetUnsafePtr(), hint.GetUnsafePtr(), buf.GetUnsafePtr(), buf.Capacity, flags, callback, userData) > 0;
+	
+	
+	[DllImport("cimgui")]
+	static extern byte igIsItemDeactivatedAfterEdit();
+	public static bool IsItemDeactivatedAfterEdit() => igIsItemDeactivatedAfterEdit() > 0;
 	
 	public static unsafe bool ColorEdit3(FixedString128Bytes clearColor, ref float4 f, ImGuiColorEditFlags flags = 0) 
 		=> ColorEdit3(clearColor.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref f), flags);
@@ -202,6 +234,12 @@ enum ImGuiMouseButton : int
 	COUNT = 5
 };
 
+/// Callback function for ImGui::InputText()
+unsafe struct ImGuiInputTextCallback
+{
+	 public delegate* unmanaged[Cdecl] <ImGuiInputTextCallbackData*, int> Value;
+}
+
 struct ImGuiWindowClass
 {
 	ImGuiID ClassId;
@@ -237,6 +275,56 @@ enum ImGuiViewportFlags
     // Output status flags (from Platform)
     IsMinimized              = 1 << 12,  // Platform Window: Window is minimized, can skip render. When minimized we tend to avoid using the viewport pos/size for clipping window or testing if they are contained in the viewport.
     IsFocused                = 1 << 13,  // Platform Window: Window is focused (last call to Platform_GetWindowFocus() returned true)
+}
+
+/// Flags for ImGui::InputText()
+/// (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigInputTextCursorBlink and io.ConfigInputTextEnterKeepActive)
+[Flags]
+enum ImGuiInputTextFlags
+{
+    None                = 0,
+    /// Allow 0123456789.+-*/
+    CharsDecimal        = 1 << 0, 
+    /// Allow 0123456789ABCDEFabcdef
+    CharsHexadecimal    = 1 << 1, 
+    /// Turn a..z into A..Z
+    CharsUppercase      = 1 << 2, 
+    /// Filter out spaces, tabs
+    CharsNoBlank        = 1 << 3, 
+    /// Select entire text when first taking mouse focus
+    AutoSelectAll       = 1 << 4, 
+    /// Return 'true' when Enter is pressed (as opposed to every time the value was modified). Consider looking at the IsItemDeactivatedAfterEdit() function.
+    EnterReturnsTrue    = 1 << 5, 
+    /// Callback on pressing TAB (for completion handling)
+    CallbackCompletion  = 1 << 6, 
+    /// Callback on pressing Up/Down arrows (for history handling)
+    CallbackHistory     = 1 << 7, 
+    /// Callback on each iteration. User code may query cursor position, modify text buffer.
+    CallbackAlways      = 1 << 8, 
+    /// Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
+    CallbackCharFilter  = 1 << 9, 
+    /// Pressing TAB input a '\t' character into the text field
+    AllowTabInput       = 1 << 10,
+    /// In multi-line mode, unfocus with Enter, add new line with Ctrl+Enter (default is opposite: unfocus with Ctrl+Enter, add line with Enter).
+    CtrlEnterForNewLine = 1 << 11,
+    /// Disable following the cursor horizontally
+    NoHorizontalScroll  = 1 << 12,
+    /// Overwrite mode
+    AlwaysOverwrite     = 1 << 13,
+    /// Read-only mode
+    ReadOnly            = 1 << 14,
+    /// Password mode, display all characters as '*'
+    Password            = 1 << 15,
+    /// Disable undo/redo. Note that input text owns the text data while active, if you want to provide your own undo/redo stack you need e.g. to call ClearActiveID().
+    NoUndoRedo          = 1 << 16,
+    /// Allow 0123456789.+-*/eE (Scientific notation input)
+    CharsScientific     = 1 << 17,
+    /// Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow. Notify when the string wants to be resized (for string types which hold a cache of their Size). You will be provided a new BufSize in the callback and NEED to honor it. (see misc/cpp/imgui_stdlib.h for an example of using this)
+    CallbackResize      = 1 << 18,
+    /// Callback on any edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
+    CallbackEdit        = 1 << 19,
+    /// Escape key clears content if not empty, and deactivate otherwise (contrast to default behavior of Escape to revert)
+    EscapeClearsAll     = 1 << 20,
 }
 
 [Flags]
@@ -1600,4 +1688,47 @@ enum ImGuiModFlags
 	ModCtrl = Ctrl, ModShift = Shift, ModAlt = Alt, ModSuper = Super, // Renamed in 1.89
 	//KeyPadEnter = KeypadEnter,              // Renamed in 1.87
 #endif
+};
+
+//-----------------------------------------------------------------------------
+// [SECTION] Misc data structures (ImGuiInputTextCallbackData, ImGuiSizeCallbackData, ImGuiPayload)
+//-----------------------------------------------------------------------------
+
+// Shared state of InputText(), passed as an argument to your callback when a ImGuiInputTextFlags_Callback* flag is used.
+// The callback function should return 0 by default.
+// Callbacks (follow a flag name and see comments in ImGuiInputTextFlags_ declarations for more details)
+// - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
+// - ImGuiInputTextFlags_CallbackAlways:      Callback on each iteration
+// - ImGuiInputTextFlags_CallbackCompletion:  Callback on pressing TAB
+// - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
+// - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
+// - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
+unsafe struct ImGuiInputTextCallbackData
+{
+    ImGuiContext*       Ctx;            // Parent UI context
+    ImGuiInputTextFlags EventFlag;      // One ImGuiInputTextFlags_Callback*    // Read-only
+    ImGuiInputTextFlags Flags;          // What user passed to InputText()      // Read-only
+    void*               UserData;       // What user passed to InputText()      // Read-only
+
+    // Arguments for the different callback events
+    // - To modify the text buffer in a callback, prefer using the InsertChars() / DeleteChars() function. InsertChars() will take care of calling the resize callback if necessary.
+    // - If you know your edits are not going to resize the underlying buffer allocation, you may modify the contents of 'Buf[]' directly. You need to update 'BufTextLen' accordingly (0 <= BufTextLen < BufSize) and set 'BufDirty'' to true so InputText can update its internal state.
+    ImWchar             EventChar;      // Character input                      // Read-write   // [CharFilter] Replace character with another one, or set to zero to drop. return 1 is equivalent to setting EventChar=0;
+    ImGuiKey            EventKey;       // Key pressed (Up/Down/TAB)            // Read-only    // [Completion,History]
+    byte*               Buf;            // Text buffer                          // Read-write   // [Resize] Can replace pointer / [Completion,History,Always] Only write to pointed data, don't replace the actual pointer!
+    int                 BufTextLen;     // Text length (in bytes)               // Read-write   // [Resize,Completion,History,Always] Exclude zero-terminator storage. In C land: == strlen(some_text), in C++ land: string.length()
+    int                 BufSize;        // Buffer size (in bytes) = capacity+1  // Read-only    // [Resize,Completion,History,Always] Include zero-terminator storage. In C land == ARRAYSIZE(my_char_array), in C++ land: string.capacity()+1
+    byte                BufDirty;       // Set if you modify Buf/BufTextLen!    // Write        // [Completion,History,Always]
+    int                 CursorPos;      //                                      // Read-write   // [Completion,History,Always]
+    int                 SelectionStart; //                                      // Read-write   // [Completion,History,Always] == to SelectionEnd when no selection)
+    int                 SelectionEnd;   //                                      // Read-write   // [Completion,History,Always]
+
+    // Helper functions for text manipulation.
+    // Use those function to benefit from the CallbackResize behaviors. Calling those function reset the selection.
+    // IMGUI_API ImGuiInputTextCallbackData();
+    // IMGUI_API void      DeleteChars(int pos, int bytes_count);
+    // IMGUI_API void      InsertChars(int pos, const char* text, const char* text_end = NULL);
+    // void                SelectAll()             { SelectionStart = 0; SelectionEnd = BufTextLen; }
+    // void                ClearSelection()        { SelectionStart = SelectionEnd = BufTextLen; }
+    // bool                HasSelection() const    { return SelectionStart != SelectionEnd; }
 };

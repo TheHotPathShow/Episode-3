@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -18,6 +19,7 @@ namespace com.daxode.imgui
             public int counter;
             public UnityObjRef<Texture2D> imageToDraw;
             public bool shouldChangeColor;
+            public FixedString512Bytes inputText;
         }
 
         MyGUIData m_GUIData;
@@ -27,6 +29,7 @@ namespace com.daxode.imgui
             m_GUIData.showDemoWindow = true;
             m_GUIData.meshColor = new Color(0.45f, 0.55f, 0.60f, 1.00f);
             m_GUIData.imageToDraw = imageToDraw;
+            m_GUIData.inputText = "This is some text in a text box.";
         }
 
         [SerializeField] Texture2D imageToDraw;
@@ -117,6 +120,7 @@ namespace com.daxode.imgui
                 ImGui.Text("Hello from another window!");
                 if (ImGui.Button("Close Me"))
                     guiData.showAnotherWindow = false;
+                ImGui.InputTextWithHint("Here's some text:", "My Fancy Hint", ref guiData.inputText);
                 ImGui.End();
             }
         }
