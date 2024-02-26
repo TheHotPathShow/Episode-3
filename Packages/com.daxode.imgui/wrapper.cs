@@ -11,7 +11,7 @@ using Unity.Mathematics;
 using UnityEngine;
 #pragma warning disable CS0414 // Field is assigned but its value is never used
 
-static class ImGui
+public static class ImGui
 {
 	public const string VERSION = "1.90.3";
 	const int VERSION_NUM = 19030;
@@ -235,12 +235,12 @@ enum ImGuiMouseButton : int
 };
 
 /// Callback function for ImGui::InputText()
-unsafe struct ImGuiInputTextCallback
+public unsafe struct ImGuiInputTextCallback
 {
 	 public delegate* unmanaged[Cdecl] <ImGuiInputTextCallbackData*, int> Value;
 }
 
-struct ImGuiWindowClass
+public struct ImGuiWindowClass
 {
 	ImGuiID ClassId;
 	ImGuiID ParentViewportId;
@@ -280,7 +280,7 @@ enum ImGuiViewportFlags
 /// Flags for ImGui::InputText()
 /// (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigInputTextCursorBlink and io.ConfigInputTextEnterKeepActive)
 [Flags]
-enum ImGuiInputTextFlags
+public enum ImGuiInputTextFlags
 {
     None                = 0,
     /// Allow 0123456789.+-*/
@@ -328,7 +328,7 @@ enum ImGuiInputTextFlags
 }
 
 [Flags]
-enum ImGuiDockNodeFlags {
+public enum ImGuiDockNodeFlags {
 	None = 0,
 	KeepAliveOnly = 1 << 0,
 	NoDockingOverCentralNode = 1 << 2,
@@ -357,7 +357,7 @@ enum ImGuiTabItemFlags {
 // Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
 // Represent a condition.
 // Important: Treat as a regular enum! Do NOT combine multiple values using binary operators! All the functions above treat 0 as a shortcut to ImGuiCond_Always.
-enum ImGuiCond
+public enum ImGuiCond
 {
 	None          = 0,        // No condition (always set the variable), same as _Always
 	Always        = 1 << 0,   // No condition (always set the variable), same as _None
@@ -373,7 +373,7 @@ enum ImGuiCond
 //   In Visual Studio IDE: CTRL+comma ("Edit.GoToAll") can follow symbols in comments, whereas CTRL+F12 ("Edit.GoToImplementation") cannot.
 //   With Visual Assist installed: ALT+G ("VAssistX.GoToImplementation") can also follow symbols in comments.
 // - When changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
-enum ImGuiStyleVar
+public enum ImGuiStyleVar
 {
     // Enum name --------------------- // Member in ImGuiStyle structure (see ImGuiStyle for descriptions)
     Alpha,               // float     Alpha
@@ -412,7 +412,7 @@ enum ImGuiStyleVar
 
 // Flags for ColorEdit3() / ColorEdit4() / ColorPicker3() / ColorPicker4() / ColorButton()
 [Flags]
-enum ImGuiColorEditFlags
+public enum ImGuiColorEditFlags
 {
     None            = 0,
     NoAlpha         = 1 << 1,   //              // ColorEdit, ColorPicker, ColorButton: ignore Alpha component (will only read 3 components from the input pointer).
@@ -472,7 +472,7 @@ enum ImGuiSliderFlags
 // Flags for ImGui::Begin()
 // (Those are per-window flags. There are shared flags in ImGuiIO: io.ConfigWindowsResizeFromEdges and io.ConfigWindowsMoveFromTitleBarOnly)
 [Flags]
-enum ImGuiWindowFlags
+public enum ImGuiWindowFlags
 {
     None                   = 0,
     NoTitleBar             = 1 << 0,   // Disable title-bar
@@ -513,13 +513,13 @@ enum ImGuiWindowFlags
 };
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImDrawIdx
+public struct ImDrawIdx
 {
 	public ushort Value;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImDrawVert
+public struct ImDrawVert
 {
 	public float2  pos;
 	public uint  col;
@@ -546,7 +546,7 @@ enum ImGuiDir : int
 
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImGuiStyle
+public struct ImGuiStyle
 {
 	 float       Alpha;                      // Global alpha applies to everything in Dear ImGui.
     float       DisabledAlpha;              // Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
@@ -654,7 +654,7 @@ unsafe struct ColorArray
 	internal ref float4 this[ImGuiCol index] => ref UnsafeUtility.ArrayElementAsRef<float4>(UnsafeUtility.AddressOf(ref this), (int)index);
 }
 
-enum ImGuiCol
+public enum ImGuiCol
 {
     Text,
     TextDisabled,
@@ -716,7 +716,7 @@ enum ImGuiCol
 
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImDrawData
+public struct ImDrawData
 {
 	public byte                Valid;              // Only valid after Render() is called and before the next NewFrame() is called.
     public int                 CmdListsCount;      // Number of ImDrawList* to render (should always be == CmdLists.size)
@@ -737,13 +737,13 @@ struct ImDrawData
 }
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct Ptr<T> where T : unmanaged
+public unsafe struct Ptr<T> where T : unmanaged
 {
 	public T* Value;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct ImVector<T> where T : unmanaged
+public unsafe struct ImVector<T> where T : unmanaged
 {
     public int                 Size;
     public int                 Capacity;
@@ -760,7 +760,7 @@ unsafe struct ImVectorRaw
 	public void*               Data;
 }
 
-unsafe struct ImDrawCallback
+public unsafe struct ImDrawCallback
 {
 	public delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void> Value;
 	public static delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void> ResetRenderState => (delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void>)k_resetRenderState;
@@ -768,7 +768,7 @@ unsafe struct ImDrawCallback
 }
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct ImDrawCmd
+public unsafe struct ImDrawCmd
 {
 	public float4          ClipRect;           // 4*4  // Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
 	ImTextureID     TextureId;          // 4-8  // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
@@ -783,7 +783,7 @@ unsafe struct ImDrawCmd
 };
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct ImDrawList
+public unsafe struct ImDrawList
 {
     // This is what you have to render
     public ImVector<ImDrawCmd>   CmdBuffer;          // Draw commands. Typically 1 command = 1 GPU draw call, unless the command is a callback. // ImDrawCmd
@@ -917,7 +917,7 @@ struct ImDrawChannel
 };
 
 [Flags]
-enum ImDrawListFlags
+public enum ImDrawListFlags
 {
 	None                    = 0,
 	AntiAliasedLines        = 1 << 0,  // Enable anti-aliased lines/borders (*2 the number of triangles for 1.0f wide line or lines thin enough to be drawn using textures, otherwise *3 the number of triangles)
@@ -927,7 +927,7 @@ enum ImDrawListFlags
 };
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImDrawListSplitter
+public struct ImDrawListSplitter
 {
 	int                         _Current;    // Current channel number (0)
 	int                         _Count;      // Number of active channels (1+)
@@ -943,19 +943,19 @@ struct ImDrawListSplitter
 };
 
 [StructLayout(LayoutKind.Sequential)]
-struct ImDrawCmdHeader
+public struct ImDrawCmdHeader
 {
 	float4          ClipRect;
 	ImTextureID     TextureId;
 	uint    VtxOffset;
 };
 
-unsafe struct ImTextureID
+public unsafe struct ImTextureID
 {
 	public void* Value;
 }
 
-struct ImWchar
+public struct ImWchar
 {
 #if IMGUI_USE_WCHAR32
 	public uint Value;
@@ -965,7 +965,7 @@ struct ImWchar
 }
 
 [Flags]
-enum ImGuiConfigFlags
+public enum ImGuiConfigFlags
 {
 	None                   = 0,
 	NavEnableKeyboard      = 1 << 0,   // Master keyboard navigation enable flag. Enable full Tabbing + directional arrows + space/enter to activate.
@@ -983,7 +983,7 @@ enum ImGuiConfigFlags
 };
 
 [Flags]
-enum ImGuiBackendFlags
+public enum ImGuiBackendFlags
 {
 	None                  = 0,
 	HasGamepad            = 1 << 0,   // Backend Platform supports gamepad and currently has one connected.
@@ -993,15 +993,15 @@ enum ImGuiBackendFlags
 };
 
 // Only defined for use as a pointer type. This is a low-level data type, not used directly by end-users.
-struct ImGuiContext {}
+public struct ImGuiContext {}
 
-struct ImGuiID
+public struct ImGuiID
 {
 	public uint Value;
 }
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct ImGuiIO
+public unsafe struct ImGuiIO
 {
 	//------------------------------------------------------------------
     // Configuration                            // Default value
@@ -1265,7 +1265,7 @@ unsafe struct ImGuiIO
 //   You can set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed,
 // - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
 // - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
-unsafe struct ImFontAtlas
+public unsafe struct ImFontAtlas
 {
     // ImFont*           AddFont(const ImFontConfig* font_cfg);
     [DllImport("cimgui")]
@@ -1386,7 +1386,7 @@ unsafe struct ImFontAtlas
 //-----------------------------------------------------------------------------
 // [SECTION] Font API (ImFontConfig, ImFontGlyph, ImFontAtlasFlags, ImFontAtlas, ImFontGlyphRangesBuilder, ImFont)
 //-----------------------------------------------------------------------------
-unsafe struct ImFontConfig
+public unsafe struct ImFontConfig
 {
     void*           FontData;               //          // TTF/OTF data
     int             FontDataSize;           //          // TTF/OTF data size
@@ -1431,7 +1431,7 @@ unsafe struct ImFontConfig
 
 // Font runtime data and rendering
 // ImFontAtlas automatically loads a default embedded font for you when you call GetTexDataAsAlpha8() or GetTexDataAsRGBA32().
-unsafe struct ImFont
+public unsafe struct ImFont
 {
     // Members: Hot ~20/24 bytes (for CalcTextSize)
     ImVector<float>             IndexAdvanceX;      // 12-16 // out //            // Sparse. Glyphs->AdvanceX in a directly indexable way (cache-friendly for CalcTextSize functions which only this this info, and are often bottleneck in large UI).
@@ -1521,7 +1521,7 @@ unsafe struct MouseClickedPosArray
 // Historically we use "Mouse" terminology everywhere to indicate pointer data, e.g. MousePos, IsMousePressed(), io.AddMousePosEvent()
 // But that "Mouse" data can come from different source which occasionally may be useful for application to know about.
 // You can submit a change of pointer type using io.AddMouseSourceEvent().
-enum ImGuiMouseSource : int
+public enum ImGuiMouseSource : int
 {
 	Mouse = 0,         // Input is coming from an actual mouse.
 	TouchScreen,       // Input is coming from a touch screen (no hovering prior to initial press, less precise initial press aiming, dual-axis wheeling possible).
@@ -1571,7 +1571,7 @@ struct ImGuiKeyData
 #endif
 };
 
-enum ImGuiKey : int
+public enum ImGuiKey : int
 {
     // Keyboard
     None = 0,
@@ -1703,7 +1703,7 @@ enum ImGuiModFlags
 // - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
 // - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
 // - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
-unsafe struct ImGuiInputTextCallbackData
+public unsafe struct ImGuiInputTextCallbackData
 {
     ImGuiContext*       Ctx;            // Parent UI context
     ImGuiInputTextFlags EventFlag;      // One ImGuiInputTextFlags_Callback*    // Read-only

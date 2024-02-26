@@ -2,7 +2,7 @@
 
 namespace com.daxode.imgui
 {
-    struct UnityObjRef<T> where T : UnityEngine.Object
+    public struct UnityObjRef<T> where T : UnityEngine.Object
     {
         public int InstanceID;
         public T Value => (T)Resources.InstanceIDToObject(InstanceID);
