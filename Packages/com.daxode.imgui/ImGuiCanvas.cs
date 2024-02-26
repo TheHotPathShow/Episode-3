@@ -26,7 +26,7 @@ namespace com.daxode.imgui
 
         void Start()
         {
-            m_GUIData.showDemoWindow = true;
+            m_GUIData.showAnotherWindow = true;
             m_GUIData.meshColor = new Color(0.45f, 0.55f, 0.60f, 1.00f);
             m_GUIData.imageToDraw = imageToDraw;
             m_GUIData.inputText = "This is some text in a text box.";
@@ -120,7 +120,9 @@ namespace com.daxode.imgui
                 ImGui.Text("Hello from another window!");
                 if (ImGui.Button("Close Me"))
                     guiData.showAnotherWindow = false;
-                ImGui.InputTextWithHint("Here's some text:", "My Fancy Hint", ref guiData.inputText);
+                ImGui.Text("Some text: ");
+                ImGui.SameLine();
+                ImGui.InputTextWithHint("", "My Fancy Hint", ref guiData.inputText);
                 ImGui.End();
             }
         }
