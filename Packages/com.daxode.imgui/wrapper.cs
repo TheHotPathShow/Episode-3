@@ -102,8 +102,11 @@ public static class ImGui
 	[DllImport("cimgui", EntryPoint = "igCheckbox")]
 	static extern unsafe byte Checkbox(byte* label, void* v);
 
-	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to) 
-		=> SliderFloat(f.GetUnsafePtr(), (float*) UnsafeUtility.AddressOf(ref currentVal), from, to, new FixedString128Bytes("%.3g").GetUnsafePtr(), 0) > 0;
+	public static unsafe bool SliderFloat(FixedString128Bytes f, ref float currentVal, float from, float to)
+	{
+		FixedString128Bytes defaultFormat = "%.3g";
+		return SliderFloat(f.GetUnsafePtr(), (float*)UnsafeUtility.AddressOf(ref currentVal), from, to, defaultFormat.GetUnsafePtr(), 0) > 0;
+	}
 
 	/// adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
 	[DllImport("cimgui", EntryPoint = "igSliderFloat")]
@@ -224,6 +227,25 @@ public static class ImGui
 		=> DebugCheckVersionAndDataLayout(VERSION, 
 			sizeof(ImGuiIO), sizeof(ImGuiStyle), sizeof(float2),
 			sizeof(float4), sizeof(ImDrawVert), sizeof(ImDrawIdx));
+}
+
+public static class ImGuiHelper
+{
+	public static unsafe bool NewFrameSafe()
+	{
+		// Start the Dear ImGui frame
+		if (ImGui.GetCurrentContext() == null || RenderHooks.GetBackendData() == null)
+			return false;
+		
+		if (RenderHooks.IsNewFrame)
+		{
+			RenderHooks.NewFrame();
+			InputAndWindowHooks.NewFrame();
+			ImGui.NewFrame();
+		}
+		
+		return true;
+	}
 }
 
 enum ImGuiMouseButton : int

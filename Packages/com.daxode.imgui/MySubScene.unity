@@ -154,7 +154,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 099e9bb0590cb0142973694341e6bfbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  degsPerSecond: 45
+  degsPerSecond: 117.1
 --- !u!23 &83944018
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -251,7 +251,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 099e9bb0590cb0142973694341e6bfbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  degsPerSecond: 45
+  degsPerSecond: 155.8
 --- !u!23 &627166286
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -542,7 +542,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 099e9bb0590cb0142973694341e6bfbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  degsPerSecond: 45
+  degsPerSecond: 52.3
 --- !u!23 &1934276338
 MeshRenderer:
   m_ObjectHideFlags: 0

@@ -10,7 +10,10 @@ namespace com.daxode.imgui
         internal struct RendererUserData
         {
             public UnityObjRef<Texture2D> FontTexture;
+            public int LastFrameCount;
         }
+
+        public static unsafe bool IsNewFrame => GetBackendData()->LastFrameCount != Time.renderedFrameCount;
 
         internal static unsafe RendererUserData* GetBackendData() 
             => ImGui.GetCurrentContext() != null ? (RendererUserData*)ImGui.GetIO()->BackendRendererUserData : null;
@@ -45,6 +48,7 @@ namespace com.daxode.imgui
             Debug.Assert(bd != null, "Did you call Init()?");
             if (bd->FontTexture.InstanceID == 0)
                 CreateDeviceObjects();
+            bd->LastFrameCount = Time.renderedFrameCount;
         }
 
         internal static unsafe bool Init()
@@ -55,6 +59,7 @@ namespace com.daxode.imgui
             // Setup backend capabilities flags
             var bd = (RendererUserData*) UnsafeUtility.Malloc(sizeof(RendererUserData), UnsafeUtility.AlignOf<RendererUserData>(), Allocator.Persistent);
             UnsafeUtility.MemClear(bd, sizeof(RendererUserData));
+            bd->LastFrameCount = -1;
             io->BackendRendererUserData = bd;
             io->BackendRendererName = (char*) new NativeText("imgui_impl_opengl2", Allocator.Persistent).GetUnsafePtr();
 

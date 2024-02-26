@@ -37,17 +37,14 @@ namespace com.daxode.imgui
 
         unsafe void Update()
         {
-            // Start the Dear ImGui frame - plan is to move this to a separate script at start of frame
-            if (ImGui.GetCurrentContext() == null || RenderHooks.GetBackendData() == null)
+            // Start the Dear ImGui frame
+            if (!ImGuiHelper.NewFrameSafe())
                 return;
-            // RenderHooks.NewFrame();
-            // InputAndWindowHooks.NewFrame();
-            // ImGui.NewFrame();
             
             // The GUI
-            // BurstedGUI(ref m_GUIData);
-            // if (m_GUIData.shouldChangeColor)
-            //     meshRendererToChange.material.color = m_GUIData.meshColor;
+            BurstedGUI(ref m_GUIData);
+            if (m_GUIData.shouldChangeColor)
+                meshRendererToChange.material.color = m_GUIData.meshColor;
         }
 
 
