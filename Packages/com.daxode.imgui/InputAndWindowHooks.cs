@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using AOT;
+using com.daxode.imgui.generated;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -129,16 +130,16 @@ namespace com.daxode.imgui
                     KeyCode.X => ImGuiKey.X,
                     KeyCode.Y => ImGuiKey.Y,
                     KeyCode.Z => ImGuiKey.Z,
-                    KeyCode.Alpha0 => ImGuiKey.N0,
-                    KeyCode.Alpha1 => ImGuiKey.N1,
-                    KeyCode.Alpha2 => ImGuiKey.N2,
-                    KeyCode.Alpha3 => ImGuiKey.N3,
-                    KeyCode.Alpha4 => ImGuiKey.N4,
-                    KeyCode.Alpha5 => ImGuiKey.N5,
-                    KeyCode.Alpha6 => ImGuiKey.N6,
-                    KeyCode.Alpha7 => ImGuiKey.N7,
-                    KeyCode.Alpha8 => ImGuiKey.N8,
-                    KeyCode.Alpha9 => ImGuiKey.N9,
+                    KeyCode.Alpha0 => ImGuiKey.No0,
+                    KeyCode.Alpha1 => ImGuiKey.No1,
+                    KeyCode.Alpha2 => ImGuiKey.No2,
+                    KeyCode.Alpha3 => ImGuiKey.No3,
+                    KeyCode.Alpha4 => ImGuiKey.No4,
+                    KeyCode.Alpha5 => ImGuiKey.No5,
+                    KeyCode.Alpha6 => ImGuiKey.No6,
+                    KeyCode.Alpha7 => ImGuiKey.No7,
+                    KeyCode.Alpha8 => ImGuiKey.No8,
+                    KeyCode.Alpha9 => ImGuiKey.No9,
                     KeyCode.F1 => ImGuiKey.F1,
                     KeyCode.F2 => ImGuiKey.F2,
                     KeyCode.F3 => ImGuiKey.F3,
