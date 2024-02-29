@@ -1192,6 +1192,19 @@ namespace com.daxode.imgui
 		ref KeysDataArray this[int index] => ref UnsafeUtility.ArrayElementAsRef<KeysDataArray>(UnsafeUtility.AddressOf(ref this), index);
 	}
 
+	enum ImGuiKeyNamedKey
+	{
+		BEGIN = 512,
+		END = (int)ImGuiKey.COUNT,
+		COUNT = END - BEGIN,
+	}
+
+	enum ImGuiKeyKeysData
+	{
+		SIZE = ImGuiKeyNamedKey.COUNT,
+		OFFSET = ImGuiKeyNamedKey.BEGIN,
+	}
+
 	struct ImGuiKeyData
 	{
 		public byte Down; // True for if key is down
