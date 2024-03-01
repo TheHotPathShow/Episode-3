@@ -4,18 +4,20 @@
 
 using System;
 using System.Runtime.InteropServices;
-using com.daxode.imgui.generated;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
+using ImGuiID = System.UInt32;
+using ImWchar = System.UInt32;
+using ImDrawIdx = System.UInt16;
 
 namespace com.daxode.imgui
 {
 
 #pragma warning disable CS0414 // Field is assigned but its value is never used
 
-	public static class ImGui
+	static class ImGui
 	{
 		public const string VERSION = "1.90.3";
 		const int VERSION_NUM = 19030;
@@ -76,28 +78,28 @@ namespace com.daxode.imgui
 		static extern unsafe bool Begin(byte* name, void* p_open = null, ImGuiWindowFlags flags = 0);
 
 		[DllImport("cimgui")]
-		static extern void igImage(ImTextureID user_texture_id, float2 image_size,
+		static extern void igImage(UnityObjRef<Texture2D> user_texture_id, float2 image_size,
 			float2 uv0, float2 uv1,
 			float4 tint_col, float4 border_col);
 
 		public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size,
 			float2 uv0 = default)
 		{
-			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size,
+			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, UnityObjRef<Texture2D>>(ref user_texture_id), image_size,
 				uv0, new float2(1, 1), new float4(1, 1, 1, 1), default);
 		}
 
 		public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size,
 			float2 uv0, float2 uv1)
 		{
-			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size,
+			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, UnityObjRef<Texture2D>>(ref user_texture_id), image_size,
 				uv0, uv1, new float4(1, 1, 1, 1), default);
 		}
 
 		public static void Image(UnityObjRef<Texture2D> user_texture_id, float2 image_size,
 			float2 uv0, float2 uv1, float4 tint_col, float4 border_col = default)
 		{
-			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, ImTextureID>(ref user_texture_id), image_size,
+			igImage(UnsafeUtility.As<UnityObjRef<Texture2D>, UnityObjRef<Texture2D>>(ref user_texture_id), image_size,
 				uv0, uv1, tint_col, border_col);
 		}
 
@@ -288,30 +290,9 @@ namespace com.daxode.imgui
 	}
 
 	/// Callback function for ImGui::InputText()
-	public unsafe struct ImGuiInputTextCallback
+	unsafe struct ImGuiInputTextCallback
 	{
 		public delegate* unmanaged[Cdecl] <ImGuiInputTextCallbackData*, int> Value;
-	}
-
-	public struct ImGuiWindowClass
-	{
-		ImGuiID ClassId;
-		ImGuiID ParentViewportId;
-		ImGuiID FocusRouteParentWindowId;
-		ImGuiViewportFlags ViewportFlagsOverrideSet;
-		ImGuiViewportFlags ViewportFlagsOverrideClear;
-		ImGuiTabItemFlags TabItemFlagsOverrideSet;
-		ImGuiDockNodeFlags DockNodeFlagsOverrideSet;
-		byte dockingAlwaysTabBar;
-		bool DockingAlwaysTabBar => dockingAlwaysTabBar > 0;
-		byte dockingAllowUnclassed;
-		bool DockingAllowUnclassed => dockingAllowUnclassed > 0;
-	};
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ImDrawIdx
-	{
-		public ushort Value;
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
@@ -322,120 +303,14 @@ namespace com.daxode.imgui
 		public float2 uv;
 	};
 
-//-----------------------------------------------------------------------------
-// [SECTION] ImGuiStyle
-//-----------------------------------------------------------------------------
-// You may modify the ImGui::GetStyle() main instance during initialization and before NewFrame().
-// During the frame, use ImGui::PushStyleVar(XXXX)/PopStyleVar() to alter the main style values,
-// and ImGui::PushStyleColor(XXX)/PopStyleColor() for colors.
-//-----------------------------------------------------------------------------
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ImGuiStyle
-	{
-		float Alpha; // Global alpha applies to everything in Dear ImGui.
-		float DisabledAlpha; // Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
-		float2 WindowPadding; // Padding within a window.
-		float WindowRounding; // Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
-		float WindowBorderSize; // Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-		float2 WindowMinSize; // Minimum window size. This is a global setting. If you want to constrain individual windows, use SetNextWindowSizeConstraints().
-		float2 WindowTitleAlign; // Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
-		ImGuiDir WindowMenuButtonPosition; // Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to Left.
-		float ChildRounding; // Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
-		float ChildBorderSize; // Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-		float PopupRounding; // Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
-		float PopupBorderSize; // Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-		float2 FramePadding; // Padding within a framed rectangle (used by most widgets).
-		float FrameRounding; // Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
-		float FrameBorderSize; // Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
-		float2 ItemSpacing; // Horizontal and vertical spacing between widgets/lines.
-		float2 ItemInnerSpacing; // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
-		float2 CellPadding; // Padding within a table cell. CellPadding.y may be altered between different rows.
-		float2 TouchExtraPadding; // Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
-		float IndentSpacing; // Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
-		float ColumnsMinSpacing; // Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
-		float ScrollbarSize; // Width of the vertical scrollbar, Height of the horizontal scrollbar.
-		float ScrollbarRounding; // Radius of grab corners for scrollbar.
-		float GrabMinSize; // Minimum width/height of a grab box for slider/scrollbar.
-		float GrabRounding; // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
-		float LogSliderDeadzone; // The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
-		float TabRounding; // Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
-		float TabBorderSize; // Thickness of border around tabs.
-		float TabMinWidthForCloseButton; // Minimum width for close button to appear on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
-		float TabBarBorderSize; // Thickness of tab-bar separator, which takes on the tab active color to denote focus.
-		float TableAngledHeadersAngle; // Angle of angled headers (supported values range from -50.0f degrees to +50.0f degrees).
-		ImGuiDir ColorButtonPosition; // Side of the color button in the ColorEdit4 widget (left/right). Defaults to Right.
-		float2 ButtonTextAlign; // Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
-		float2 SelectableTextAlign; // Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
-		float SeparatorTextBorderSize; // Thickkness of border in SeparatorText()
-		float2 SeparatorTextAlign; // Alignment of text within the separator. Defaults to (0.0f, 0.5f) (left aligned, center).
-		float2 SeparatorTextPadding; // Horizontal offset of text from each edge of the separator + spacing on other axis. Generally small values. .y is recommended to be == FramePadding.y.
-		float2 DisplayWindowPadding; // Window position are clamped to be visible within the display area or monitors by at least this amount. Only applies to regular windows.
-		float2 DisplaySafeAreaPadding; // If you cannot see the edges of your screen (e.g. on a TV) increase the safe area padding. Apply to popups/tooltips as well regular windows. NB: Prefer configuring your TV sets correctly!
-		float DockingSeparatorSize; // Thickness of resizing border between docked windows
-		float MouseCursorScale; // Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
-		bool AntiAliasedLines; // Enable anti-aliased lines/borders. Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
-		bool AntiAliasedLinesUseTex; // Enable anti-aliased lines/borders using textures where possible. Require backend to render with bilinear filtering (NOT point/nearest filtering). Latched at the beginning of the frame (copied to ImDrawList).
-		bool AntiAliasedFill; // Enable anti-aliased edges around filled shapes (rounded rectangles, circles, etc.). Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
-		float CurveTessellationTol; // Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
-		float CircleTessellationMaxError; // Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
-		internal ColorArray Colors;
-
-		// Behaviors
-		// (It is possible to modify those fields mid-frame if specific behavior need it, unlike e.g. configuration fields in ImGuiIO)
-		float HoverStationaryDelay; // Delay for IsItemHovered(Stationary). Time required to consider mouse stationary.
-		float HoverDelayShort; // Delay for IsItemHovered(DelayShort). Usually used along with HoverStationaryDelay.
-		float HoverDelayNormal; // Delay for IsItemHovered(DelayNormal). "
-		ImGuiHoveredFlags HoverFlagsForTooltipMouse; // Default flags when using IsItemHovered(ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using mouse.
-		ImGuiHoveredFlags HoverFlagsForTooltipNav; // Default flags when using IsItemHovered(ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using keyboard/gamepad.
-
-		// IMGUI_API ImGuiStyle();
-		// IMGUI_API void ScaleAllSizes(float scale_factor);
-	}
-
-	[StructLayout(LayoutKind.Explicit)]
-	unsafe struct ColorArray
-	{
-		[FieldOffset(0)]
-		fixed float Values[(int)ImGuiCol.COUNT * 4];
-
-		internal ref float4 this[ImGuiCol index] => ref UnsafeUtility.ArrayElementAsRef<float4>(UnsafeUtility.AddressOf(ref this), (int)index);
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ImDrawData
-	{
-		public byte Valid; // Only valid after Render() is called and before the next NewFrame() is called.
-		public int CmdListsCount; // Number of ImDrawList* to render (should always be == CmdLists.size)
-		public int TotalIdxCount; // For convenience, sum of all ImDrawList's IdxBuffer.Size
-		public int TotalVtxCount; // For convenience, sum of all ImDrawList's VtxBuffer.Size
-		public ImVector<Ptr<ImDrawList>> CmdLists; // Array of ImDrawList* to render. The ImDrawLists are owned by ImGuiContext and only pointed to from here.
-		public float2 DisplayPos; // Top-left position of the viewport to render (== top-left of the orthogonal projection matrix to use) (== GetMainViewport()->Pos for the main viewport, == (0.0) in most single-viewport applications)
-		public float2 DisplaySize; // Size of the viewport to render (== GetMainViewport()->Size for the main viewport, == io.DisplaySize in most single-viewport applications)
-		public float2 FramebufferScale; // Amount of pixels for each unit of DisplaySize. Based on io.DisplayFramebufferScale. Generally (1,1) on normal display, (2,2) on OSX with Retina display.
-		public IntPtr OwnerViewport; // Viewport carrying the ImDrawData instance, might be of use to the renderer (generally not). // ImGuiViewport
-
-		// // Functions
-		// ImDrawData()    { Clear(); }
-		// void  Clear() {}
-		// void  AddDrawList(ref ImDrawList draw_list) {}
-		// void  DeIndexAllBuffers() {}
-		// void  ScaleClipRects(ref float2 fb_scale) {}
-	}
-
 	[StructLayout(LayoutKind.Sequential)]
 	public unsafe struct Ptr<T> where T : unmanaged
 	{
 		public T* Value;
 	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public unsafe struct ImVector<T> where T : unmanaged
+	
+	unsafe partial struct ImVector<T> where T : unmanaged
 	{
-		public int Size;
-		public int Capacity;
-		public T* Data;
-
 		public ref T this[int index] => ref UnsafeUtility.ArrayElementAsRef<T>(Data, index);
 	}
 
@@ -447,311 +322,20 @@ namespace com.daxode.imgui
 		public void* Data;
 	}
 
-	public unsafe struct ImDrawCallback
+	unsafe struct ImDrawCallback
 	{
-		public delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void> Value;
-		public static delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void> ResetRenderState => (delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void>)k_resetRenderState;
+		public static delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void> ResetRenderState 
+			=> (delegate* unmanaged[Cdecl]<ImDrawList*, ImDrawCmd*, void>)k_resetRenderState;
 		const nint k_resetRenderState = -8;
 	}
 
-	[StructLayout(LayoutKind.Sequential)]
-	public unsafe struct ImDrawCmd
+	unsafe partial struct ImDrawCmd
 	{
-		public float4 ClipRect; // 4*4  // Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
-		ImTextureID TextureId; // 4-8  // User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
-		public uint VtxOffset; // 4    // Start offset in vertex buffer. ImGuiBackendFlags_RendererHasVtxOffset: always 0, otherwise may be >0 to support meshes larger than 64K vertices with 16-bit indices.
-		public uint IdxOffset; // 4    // Start offset in index buffer.
-		public uint ElemCount; // 4    // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
-		public ImDrawCallback UserCallback; // 4-8  // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
-		void* UserCallbackData; // 4-8  // The draw callback code can access this.
-
-		// Since 1.83: returns ImTextureID associated with this draw call. Warning: DO NOT assume this is always same as 'TextureId' (we will change this function for an upcoming feature)
-		public ImTextureID GetTexID() => TextureId;
+		public UnityObjRef<Texture2D> GetTexID() => TextureId;
 	};
 
-	[StructLayout(LayoutKind.Sequential)]
-	public unsafe struct ImDrawList
+	unsafe partial struct ImGuiIO
 	{
-		// This is what you have to render
-		public ImVector<ImDrawCmd> CmdBuffer; // Draw commands. Typically 1 command = 1 GPU draw call, unless the command is a callback. // ImDrawCmd
-		public ImVector<ImDrawIdx> IdxBuffer; // Index buffer. Each command consume ImDrawCmd::ElemCount of those
-		public ImVector<ImDrawVert> VtxBuffer; // Vertex buffer.
-		public ImDrawListFlags Flags; // Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
-
-		// [Internal, used while building lists]
-		public uint _VtxCurrentIdx; // [Internal] generally == VtxBuffer.Size unless we are past 64K vertices, in which case this gets reset to 0.
-		public IntPtr _Data; // Pointer to shared draw data (you can use ImGui::GetDrawListSharedData() to get the one from current ImGui context) // ImDrawListSharedData
-		public char* _OwnerName; // Pointer to owner window's name for debugging
-		public IntPtr _VtxWritePtr; // [Internal] point within VtxBuffer.Data after each add command (to avoid using the ImVector<> operators too much) // ImDrawVert
-		public IntPtr _IdxWritePtr; // [Internal] point within IdxBuffer.Data after each add command (to avoid using the ImVector<> operators too much) // ImDrawIdx
-		public ImVector<float4> _ClipRectStack; // [Internal]
-		public ImVector<ImTextureID> _TextureIdStack; // [Internal]
-		public ImVector<float2> _Path; // [Internal] current path building
-		public ImDrawCmdHeader _CmdHeader; // [Internal] template of active commands. Fields should match those of CmdBuffer.back().
-		public ImDrawListSplitter _Splitter; // [Internal] for channels api (note: prefer using your own persistent instance of ImDrawListSplitter!)
-		public float _FringeScale; // [Internal] anti-alias fringe is scaled by this value, this helps to keep things sharp while zooming at vertex buffer content
-
-		// // If you want to create ImDrawList instances, pass them ImGui::GetDrawListSharedData() or create and use your own ImDrawListSharedData (so you can use ImDrawList without ImGui)
-		// ImDrawList(ImDrawListSharedData* shared_data) { memset(this, 0, sizeof(*this)); _Data = shared_data; }
-		//
-		// ~ImDrawList() { _ClearFreeMemory(); }
-		// IMGUI_API void  PushClipRect(const float2& clip_rect_min, const float2& clip_rect_max, bool intersect_with_current_clip_rect = false);  // Render-level scissoring. This is passed down to your render function but not used for CPU-side coarse clipping. Prefer using higher-level ImGui::PushClipRect() to affect logic (hit-testing and widget culling)
-		// IMGUI_API void  PushClipRectFullScreen();
-		// IMGUI_API void  PopClipRect();
-		// IMGUI_API void  PushTextureID(ImTextureID texture_id);
-		// IMGUI_API void  PopTextureID();
-		// inline float2   GetClipRectMin() const { const ImVec4& cr = _ClipRectStack.back(); return float2(cr.x, cr.y); }
-		// inline float2   GetClipRectMax() const { const ImVec4& cr = _ClipRectStack.back(); return float2(cr.z, cr.w); }
-		//
-		// // Primitives
-		// // - Filled shapes must always use clockwise winding order. The anti-aliasing fringe depends on it. Counter-clockwise shapes will have "inward" anti-aliasing.
-		// // - For rectangular primitives, "p_min" and "p_max" represent the upper-left and lower-right corners.
-		// // - For circle primitives, use "num_segments == 0" to automatically calculate tessellation (preferred).
-		// //   In older versions (until Dear ImGui 1.77) the AddCircle functions defaulted to num_segments == 12.
-		// //   In future versions we will use textures to provide cheaper and higher-quality circles.
-		// //   Use AddNgon() and AddNgonFilled() functions if you need to guarantee a specific number of sides.
-		// IMGUI_API void  AddLine(const float2& p1, const float2& p2, ImU32 col, float thickness = 1.0f);
-		// IMGUI_API void  AddRect(const float2& p_min, const float2& p_max, ImU32 col, float rounding = 0.0f, ImDrawFlags flags = 0, float thickness = 1.0f);   // a: upper-left, b: lower-right (== upper-left + size)
-		// IMGUI_API void  AddRectFilled(const float2& p_min, const float2& p_max, ImU32 col, float rounding = 0.0f, ImDrawFlags flags = 0);                     // a: upper-left, b: lower-right (== upper-left + size)
-		// IMGUI_API void  AddRectFilledMultiColor(const float2& p_min, const float2& p_max, ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right, ImU32 col_bot_left);
-		// IMGUI_API void  AddQuad(const float2& p1, const float2& p2, const float2& p3, const float2& p4, ImU32 col, float thickness = 1.0f);
-		// IMGUI_API void  AddQuadFilled(const float2& p1, const float2& p2, const float2& p3, const float2& p4, ImU32 col);
-		// IMGUI_API void  AddTriangle(const float2& p1, const float2& p2, const float2& p3, ImU32 col, float thickness = 1.0f);
-		// IMGUI_API void  AddTriangleFilled(const float2& p1, const float2& p2, const float2& p3, ImU32 col);
-		// IMGUI_API void  AddCircle(const float2& center, float radius, ImU32 col, int num_segments = 0, float thickness = 1.0f);
-		// IMGUI_API void  AddCircleFilled(const float2& center, float radius, ImU32 col, int num_segments = 0);
-		// IMGUI_API void  AddNgon(const float2& center, float radius, ImU32 col, int num_segments, float thickness = 1.0f);
-		// IMGUI_API void  AddNgonFilled(const float2& center, float radius, ImU32 col, int num_segments);
-		// IMGUI_API void  AddEllipse(const float2& center, float radius_x, float radius_y, ImU32 col, float rot = 0.0f, int num_segments = 0, float thickness = 1.0f);
-		// IMGUI_API void  AddEllipseFilled(const float2& center, float radius_x, float radius_y, ImU32 col, float rot = 0.0f, int num_segments = 0);
-		// IMGUI_API void  AddText(const float2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL);
-		// IMGUI_API void  AddText(const ImFont* font, float font_size, const float2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = NULL);
-		// IMGUI_API void  AddPolyline(const float2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
-		// IMGUI_API void  AddConvexPolyFilled(const float2* points, int num_points, ImU32 col);
-		// IMGUI_API void  AddBezierCubic(const float2& p1, const float2& p2, const float2& p3, const float2& p4, ImU32 col, float thickness, int num_segments = 0); // Cubic Bezier (4 control points)
-		// IMGUI_API void  AddBezierQuadratic(const float2& p1, const float2& p2, const float2& p3, ImU32 col, float thickness, int num_segments = 0);               // Quadratic Bezier (3 control points)
-		//
-		// // Image primitives
-		// // - Read FAQ to understand what ImTextureID is.
-		// // - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
-		// // - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
-		// IMGUI_API void  AddImage(ImTextureID user_texture_id, const float2& p_min, const float2& p_max, const float2& uv_min = float2(0, 0), const float2& uv_max = float2(1, 1), ImU32 col = IM_COL32_WHITE);
-		// IMGUI_API void  AddImageQuad(ImTextureID user_texture_id, const float2& p1, const float2& p2, const float2& p3, const float2& p4, const float2& uv1 = float2(0, 0), const float2& uv2 = float2(1, 0), const float2& uv3 = float2(1, 1), const float2& uv4 = float2(0, 1), ImU32 col = IM_COL32_WHITE);
-		// IMGUI_API void  AddImageRounded(ImTextureID user_texture_id, const float2& p_min, const float2& p_max, const float2& uv_min, const float2& uv_max, ImU32 col, float rounding, ImDrawFlags flags = 0);
-		//
-		// // Stateful path API, add points then finish with PathFillConvex() or PathStroke()
-		// // - Filled shapes must always use clockwise winding order. The anti-aliasing fringe depends on it. Counter-clockwise shapes will have "inward" anti-aliasing.
-		// inline    void  PathClear()                                                 { _Path.Size = 0; }
-		// inline    void  PathLineTo(const float2& pos)                               { _Path.push_back(pos); }
-		// inline    void  PathLineToMergeDuplicate(const float2& pos)                 { if (_Path.Size == 0 || memcmp(&_Path.Data[_Path.Size - 1], &pos, 8) != 0) _Path.push_back(pos); }
-		// inline    void  PathFillConvex(ImU32 col)                                   { AddConvexPolyFilled(_Path.Data, _Path.Size, col); _Path.Size = 0; }
-		// inline    void  PathStroke(ImU32 col, ImDrawFlags flags = 0, float thickness = 1.0f) { AddPolyline(_Path.Data, _Path.Size, col, flags, thickness); _Path.Size = 0; }
-		// IMGUI_API void  PathArcTo(const float2& center, float radius, float a_min, float a_max, int num_segments = 0);
-		// IMGUI_API void  PathArcToFast(const float2& center, float radius, int a_min_of_12, int a_max_of_12);                // Use precomputed angles for a 12 steps circle
-		// IMGUI_API void  PathEllipticalArcTo(const float2& center, float radius_x, float radius_y, float rot, float a_min, float a_max, int num_segments = 0); // Ellipse
-		// IMGUI_API void  PathBezierCubicCurveTo(const float2& p2, const float2& p3, const float2& p4, int num_segments = 0); // Cubic Bezier (4 control points)
-		// IMGUI_API void  PathBezierQuadraticCurveTo(const float2& p2, const float2& p3, int num_segments = 0);               // Quadratic Bezier (3 control points)
-		// IMGUI_API void  PathRect(const float2& rect_min, const float2& rect_max, float rounding = 0.0f, ImDrawFlags flags = 0);
-		//
-		// // Advanced
-		// IMGUI_API void  AddCallback(ImDrawCallback callback, void* callback_data);  // Your rendering function must check for 'UserCallback' in ImDrawCmd and call the function instead of rendering triangles.
-		// IMGUI_API void  AddDrawCmd();                                               // This is useful if you need to forcefully create a new draw call (to allow for dependent rendering / blending). Otherwise primitives are merged into the same draw-call as much as possible
-		// IMGUI_API ImDrawList* CloneOutput() const;                                  // Create a clone of the CmdBuffer/IdxBuffer/VtxBuffer.
-		//
-		// // Advanced: Channels
-		// // - Use to split render into layers. By switching channels to can render out-of-order (e.g. submit FG primitives before BG primitives)
-		// // - Use to minimize draw calls (e.g. if going back-and-forth between multiple clipping rectangles, prefer to append into separate channels then merge at the end)
-		// // - This API shouldn't have been in ImDrawList in the first place!
-		// //   Prefer using your own persistent instance of ImDrawListSplitter as you can stack them.
-		// //   Using the ImDrawList::ChannelsXXXX you cannot stack a split over another.
-		// inline void     ChannelsSplit(int count)    { _Splitter.Split(this, count); }
-		// inline void     ChannelsMerge()             { _Splitter.Merge(this); }
-		// inline void     ChannelsSetCurrent(int n)   { _Splitter.SetCurrentChannel(this, n); }
-		//
-		// // Advanced: Primitives allocations
-		// // - We render triangles (three vertices)
-		// // - All primitives needs to be reserved via PrimReserve() beforehand.
-		// IMGUI_API void  PrimReserve(int idx_count, int vtx_count);
-		// IMGUI_API void  PrimUnreserve(int idx_count, int vtx_count);
-		// IMGUI_API void  PrimRect(const float2& a, const float2& b, ImU32 col);      // Axis aligned rectangle (composed of two triangles)
-		// IMGUI_API void  PrimRectUV(const float2& a, const float2& b, const float2& uv_a, const float2& uv_b, ImU32 col);
-		// IMGUI_API void  PrimQuadUV(const float2& a, const float2& b, const float2& c, const float2& d, const float2& uv_a, const float2& uv_b, const float2& uv_c, const float2& uv_d, ImU32 col);
-		// inline    void  PrimWriteVtx(const float2& pos, const float2& uv, ImU32 col)    { _VtxWritePtr->pos = pos; _VtxWritePtr->uv = uv; _VtxWritePtr->col = col; _VtxWritePtr++; _VtxCurrentIdx++; }
-		// inline    void  PrimWriteIdx(ImDrawIdx idx)                                     { *_IdxWritePtr = idx; _IdxWritePtr++; }
-		// inline    void  PrimVtx(const float2& pos, const float2& uv, ImU32 col)         { PrimWriteIdx((ImDrawIdx)_VtxCurrentIdx); PrimWriteVtx(pos, uv, col); } // Write vertex with unique index
-		//
-		// // Obsolete names
-		// //inline  void  AddBezierCurve(const float2& p1, const float2& p2, const float2& p3, const float2& p4, ImU32 col, float thickness, int num_segments = 0) { AddBezierCubic(p1, p2, p3, p4, col, thickness, num_segments); } // OBSOLETED in 1.80 (Jan 2021)
-		// //inline  void  PathBezierCurveTo(const float2& p2, const float2& p3, const float2& p4, int num_segments = 0) { PathBezierCubicCurveTo(p2, p3, p4, num_segments); } // OBSOLETED in 1.80 (Jan 2021)
-		//
-		// // [Internal helpers]
-		// IMGUI_API void  _ResetForNewFrame();
-		// IMGUI_API void  _ClearFreeMemory();
-		// IMGUI_API void  _PopUnusedDrawCmd();
-		// IMGUI_API void  _TryMergeDrawCmds();
-		// IMGUI_API void  _OnChangedClipRect();
-		// IMGUI_API void  _OnChangedTextureID();
-		// IMGUI_API void  _OnChangedVtxOffset();
-		// IMGUI_API int   _CalcCircleAutoSegmentCount(float radius) const;
-		// IMGUI_API void  _PathArcToFastEx(const float2& center, float radius, int a_min_sample, int a_max_sample, int a_step);
-		// IMGUI_API void  _PathArcToN(const float2& center, float radius, float a_min, float a_max, int num_segments);
-	}
-
-	struct ImDrawChannel
-	{
-		ImVectorRaw _CmdBuffer; // ImDrawCmd
-		ImVectorRaw _IdxBuffer; // ImDrawIdx
-	};
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ImDrawListSplitter
-	{
-		int _Current; // Current channel number (0)
-		int _Count; // Number of active channels (1+)
-		ImVector<ImDrawChannel> _Channels; // Draw channels (not resized down so _Count might be < Channels.Size)
-
-		// inline ImDrawListSplitter()  { memset(this, 0, sizeof(*this)); }
-		// inline ~ImDrawListSplitter() { ClearFreeMemory(); }
-		// inline void                 Clear() { _Current = 0; _Count = 1; } // Do not clear Channels[] so our allocations are reused next frame
-		// IMGUI_API void              ClearFreeMemory();
-		// IMGUI_API void              Split(ImDrawList* draw_list, int count);
-		// IMGUI_API void              Merge(ImDrawList* draw_list);
-		// IMGUI_API void              SetCurrentChannel(ImDrawList* draw_list, int channel_idx);
-	};
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ImDrawCmdHeader
-	{
-		float4 ClipRect;
-		ImTextureID TextureId;
-		uint VtxOffset;
-	};
-
-	public unsafe struct ImTextureID
-	{
-		public void* Value;
-	}
-
-	public struct ImWchar
-	{
-#if IMGUI_USE_WCHAR32
-		public uint Value;
-#else
-	public ushort Value;
-#endif
-	}
-
-// Only defined for use as a pointer type. This is a low-level data type, not used directly by end-users.
-	public struct ImGuiContext { }
-
-	public struct ImGuiID
-	{
-		public uint Value;
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public unsafe struct ImGuiIO
-	{
-		//------------------------------------------------------------------
-		// Configuration                            // Default value
-		//------------------------------------------------------------------
-
-		public ImGuiConfigFlags ConfigFlags; // = 0              // See ImGuiConfigFlags_ enum. Set by user/application. Gamepad/keyboard navigation options, etc.
-		public ImGuiBackendFlags BackendFlags; // = 0              // See ImGuiBackendFlags_ enum. Set by backend (imgui_impl_xxx files or custom backend) to communicate features supported by the backend.
-		public float2 DisplaySize; // <unset>          // Main display size, in pixels (generally == GetMainViewport()->Size). May change every frame.
-		public float DeltaTime; // = 1.0f/60.0f     // Time elapsed since last frame, in seconds. May change every frame.
-		float IniSavingRate; // = 5.0f           // Minimum time between saving positions/sizes to .ini file, in seconds.
-		char* IniFilename; // = "imgui.ini"    // Path to .ini file (important: default "imgui.ini" is relative to current working dir!). Set NULL to disable automatic .ini loading/saving or if you want to manually call LoadIniSettingsXXX() / SaveIniSettingsXXX() functions.
-		char* LogFilename; // = "imgui_log.txt"// Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
-		void* UserData; // = NULL           // Store your own data.
-
-		public ImFontAtlas* Fonts; // <auto>           // Font atlas: load, rasterize and pack one or more fonts into a single texture. // ImFontAtlas
-		public float FontGlobalScale; // = 1.0f           // Global scale all fonts
-		byte FontAllowUserScaling; // = false          // Allow user scaling text of individual window with CTRL+Wheel.
-		public ImFontAtlas* FontDefault; // = NULL           // Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0]. // ImFont
-		public float2 DisplayFramebufferScale; // = (1, 1)         // For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
-
-		// Docking options (when ImGuiConfigFlags_DockingEnable is set)
-		byte ConfigDockingNoSplit; // = false          // Simplified docking mode: disable window splitting, so docking is limited to merging multiple windows together into tab-bars.
-		byte ConfigDockingWithShift; // = false          // Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
-		byte ConfigDockingAlwaysTabBar; // = false          // [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
-		byte ConfigDockingTransparentPayload; // = false          // [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
-
-		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-		byte ConfigViewportsNoAutoMerge; // = false;         // Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set NoAutoMerge on individual viewport.
-		byte ConfigViewportsNoTaskBarIcon; // = false          // Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, NoTaskBarIcon will be set on it.
-		byte ConfigViewportsNoDecoration; // = true           // Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
-		byte ConfigViewportsNoDefaultParent; // = false          // Disable default OS parenting to main viewport for secondary viewports. By default, viewports are marked with ParentViewportId = <main_viewport>, expecting the platform backend to setup a parent/child relationship between the OS windows (some backend may ignore this). Set to true if you want the default to be 0, then all viewports will be top-level OS windows.
-
-		// Miscellaneous options
-		byte MouseDrawCursor; // = false          // Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor). Cannot be easily renamed to 'io.ConfigXXX' because this is frequently used by backend implementations.
-		byte ConfigMacOSXBehaviors; // = defined(__APPLE__) // OS X style: Text editing cursor movement using Alt instead of Ctrl, Shortcuts using Cmd/Super instead of Ctrl, Line/Text Start and End using Cmd+Arrows instead of Home/End, Double click selects by word instead of selecting whole text, Multi-selection in lists uses Cmd/Super instead of Ctrl.
-		byte ConfigInputTrickleEventQueue; // = true           // Enable input queue trickling: some types of events submitted during the same frame (e.g. button down + up) will be spread over multiple frames, improving interactions with low framerates.
-		byte ConfigInputTextCursorBlink; // = true           // Enable blinking cursor (optional as some users consider it to be distracting).
-		byte ConfigInputTextEnterKeepActive; // = false          // [BETA] Pressing Enter will keep item active and select contents (single-line only).
-		byte ConfigDragClickToInputText; // = false          // [BETA] Enable turning DragXXX widgets into text input with a simple mouse click-release (without moving). Not desirable on devices without a keyboard.
-		byte ConfigWindowsResizeFromEdges; // = true           // Enable resizing of windows from their edges and from the lower-left corner. This requires (io.BackendFlags & ImGuiBackendFlags_HasMouseCursors) because it needs mouse cursor feedback. (This used to be a per-window ImGuiWindowFlags_ResizeFromAnySide flag)
-		byte ConfigWindowsMoveFromTitleBarOnly; // = false       // Enable allowing to move windows only when clicking on their title bar. Does not apply to windows without a title bar.
-		float ConfigMemoryCompactTimer; // = 60.0f          // Timer (in seconds) to free transient windows/tables memory buffers when unused. Set to -1.0f to disable.
-
-		// Inputs Behaviors
-		// (other variables, ones which are expected to be tweaked within UI code, are exposed in ImGuiStyle)
-		float MouseDoubleClickTime; // = 0.30f          // Time for a double-click, in seconds.
-		float MouseDoubleClickMaxDist; // = 6.0f           // Distance threshold to stay in to validate a double-click, in pixels.
-		float MouseDragThreshold; // = 6.0f           // Distance threshold before considering we are dragging.
-		float KeyRepeatDelay; // = 0.275f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
-		float KeyRepeatRate; // = 0.050f         // When holding a key/button, rate at which it repeats, in seconds.
-
-		//------------------------------------------------------------------
-		// Debug options
-		//------------------------------------------------------------------
-
-		// Option to enable various debug tools showing buttons that will call the IM_DEBUG_BREAK() macro.
-		// - The Item Picker tool will be available regardless of this being enabled, in order to maximize its discoverability.
-		// - Requires a debugger being attached, otherwise IM_DEBUG_BREAK() options will appear to crash your application.
-		//   e.g. io.ConfigDebugIsDebuggerPresent = ::IsDebuggerPresent() on Win32, or refer to ImOsIsDebuggerPresent() imgui_test_engine/imgui_te_utils.cpp for a Unix compatible version).
-		byte ConfigDebugIsDebuggerPresent; // = false          // Enable various tools calling IM_DEBUG_BREAK().
-
-		// Tools to test correct Begin/End and BeginChild/EndChild behaviors.
-		// - Presently Begin()/End() and BeginChild()/EndChild() needs to ALWAYS be called in tandem, regardless of return value of BeginXXX()
-		// - This is inconsistent with other BeginXXX functions and create confusion for many users.
-		// - We expect to update the API eventually. In the meanwhile we provide tools to facilitate checking user-code behavior.
-		byte ConfigDebugBeginReturnValueOnce; // = false          // First-time calls to Begin()/BeginChild() will return false. NEEDS TO BE SET AT APPLICATION BOOT TIME if you don't want to miss windows.
-		byte ConfigDebugBeginReturnValueLoop; // = false          // Some calls to Begin()/BeginChild() will return false. Will cycle through window depths then repeat. Suggested use: add "io.ConfigDebugBeginReturnValue = io.KeyShift" in your main loop then occasionally press SHIFT. Windows should be flickering while running.
-
-		// Option to deactivate io.AddFocusEvent(false) handling.
-		// - May facilitate interactions with a debugger when focus loss leads to clearing inputs data.
-		// - Backends may have other side-effects on focus loss, so this will reduce side-effects but not necessary remove all of them.
-		byte ConfigDebugIgnoreFocusLoss; // = false          // Ignore io.AddFocusEvent(false), consequently not calling io.ClearInputKeys() in input processing.
-
-		// Option to audit .ini data
-		byte ConfigDebugIniSettings; // = false          // Save .ini data with extra comments (particularly helpful for Docking, but makes saving slower)
-
-		//------------------------------------------------------------------
-		// Platform Functions
-		// (the imgui_impl_xxxx backend files are setting those up for you)
-		//------------------------------------------------------------------
-
-		// Optional: Platform/Renderer backend name (informational only! will be displayed in About Window) + User data for backend/wrappers to store their own stuff.
-		public char* BackendPlatformName; // = NULL
-		public char* BackendRendererName; // = NULL
-		public void* BackendPlatformUserData; // = NULL           // User data for platform backend
-		public void* BackendRendererUserData; // = NULL           // User data for renderer backend
-		void* BackendLanguageUserData; // = NULL           // User data for non C++ programming language backend
-
-		// Optional: Access OS clipboard
-		// (default to use native Win32 clipboard on Windows, otherwise uses a private clipboard. Override to access OS clipboard on other architectures)
-		public delegate* unmanaged[Cdecl] <void*, char*> GetClipboardTextFn;
-		public delegate* unmanaged[Cdecl] <void*, char*, void> SetClipboardTextFn;
-		public void* ClipboardUserData;
-
-		// Optional: Notify OS Input Method Editor of the screen position of your cursor for text input position (e.g. when using Japanese/Chinese IME on Windows)
-		// (default to use native imm32 api on Windows)
-		delegate* unmanaged[Cdecl]<void*, void*, void> SetPlatformImeDataFn; // ImGuiViewport, ImGuiPlatformImeData
-
-		// Optional: Platform locale
-		ImWchar PlatformLocaleDecimalPoint; // '.'              // [Experimental] Configure decimal point e.g. '.' or ',' useful for some languages (e.g. German), generally pulled from *localeconv()->decimal_point
-
 		//------------------------------------------------------------------
 		// Input - Call before calling NewFrame()
 		//------------------------------------------------------------------
@@ -822,89 +406,6 @@ namespace com.daxode.imgui
 
 		/// Clear current keyboard/mouse/gamepad state + current frame text input buffer. Equivalent to releasing all keys/buttons.
 		public void ClearInputKeys() => ImGuiIO_ClearInputKeys((ImGuiIO*)UnsafeUtility.AddressOf(ref this));
-
-		// #if !IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-		//    void  ClearInputCharacters();                                 // [Obsoleted in 1.89.8] Clear the current frame text input buffer. Now included within ClearInputKeys().
-		// #endif
-
-		//------------------------------------------------------------------
-		// Output - Updated by NewFrame() or EndFrame()/Render()
-		// (when reading from the io.WantCaptureMouse, io.WantCaptureKeyboard flags to dispatch your inputs, it is
-		//  generally easier and more correct to use their state BEFORE calling NewFrame(). See FAQ for details!)
-		//------------------------------------------------------------------
-
-		byte WantCaptureMouse; // Set when Dear ImGui will use mouse inputs, in this case do not dispatch them to your main game/application (either way, always pass on mouse inputs to imgui). (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
-		byte WantCaptureKeyboard; // Set when Dear ImGui will use keyboard inputs, in this case do not dispatch them to your main game/application (either way, always pass keyboard inputs to imgui). (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
-		byte WantTextInput; // Mobile/console: when set, you may display an on-screen keyboard. This is set by Dear ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
-		public byte WantSetMousePos; // MousePos has been altered, backend should reposition mouse on next frame. Rarely used! Set only when ImGuiConfigFlags_NavEnableSetMousePos flag is enabled.
-		byte WantSaveIniSettings; // When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
-		byte NavActive; // Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
-		byte NavVisible; // Keyboard/Gamepad navigation is visible and allowed (will handle ImGuiKey_NavXXX events).
-		public float Framerate; // Estimate of application framerate (rolling average over 60 frames, based on io.DeltaTime), in frame per second. Solely for convenience. Slow applications may not want to use a moving average or may want to reset underlying buffers occasionally.
-		int MetricsRenderVertices; // Vertices output during last call to Render()
-		int MetricsRenderIndices; // Indices output during last call to Render() = number of triangles * 3
-		int MetricsRenderWindows; // Number of visible windows
-		int MetricsActiveWindows; // Number of active windows
-		float2 MouseDelta; // Mouse delta. Note that this is zero if either current or previous position are invalid (-FLT_MAX,-FLT_MAX), so a disappearing/reappearing mouse won't have a huge delta.
-
-		// Legacy: before 1.87, we required backend to fill io.KeyMap[] (imgui->native map) during initialization and io.KeysDown[] (native indices) every frame.
-		// This is still temporarily supported as a legacy feature. However the new preferred scheme is for backend to call io.AddKeyEvent().
-		//   Old (<1.87):  ImGui::IsKeyPressed(ImGui::GetIO().KeyMap[ImGuiKey_Space]) --> New (1.87+) ImGui::IsKeyPressed(ImGuiKey_Space)
-#if !IMGUI_DISABLE_OBSOLETE_KEYIO
-    fixed int         KeyMap[(int)ImGuiKey.COUNT];             // [LEGACY] Input: map of indices into the KeysDown[512] entries array which represent your "native" keyboard state. The first 512 are now unused and should be kept zero. Legacy backend will write into KeyMap[] using ImGuiKey_ indices which are always >512.
-    fixed byte        KeysDown[(int)ImGuiKey.COUNT];           // [LEGACY] Input: Keyboard keys that are pressed (ideally left in the "native" order your engine has access to keyboard keys, so you can use your own defines/enums for keys). This used to be [512] sized. It is now ImGuiKey_COUNT to allow legacy io.KeysDown[GetKeyIndex(...)] to work without an overflow.
-    fixed float       NavInputs[(int)ImGuiNavInput.COUNT];     // [LEGACY] Since 1.88, NavInputs[] was removed. Backends from 1.60 to 1.86 won't build. Feed gamepad inputs via io.AddKeyEvent() and ImGuiKey_GamepadXXX enums.
-    //void*     ImeWindowHandle;                    // [Obsoleted in 1.87] Set ImGuiViewport::PlatformHandleRaw instead. Set this to your HWND to get automatic IME cursor positioning.
-#endif
-
-		//------------------------------------------------------------------
-		// [Internal] Dear ImGui will maintain those fields. Forward compatibility not guaranteed!
-		//------------------------------------------------------------------
-
-		ImGuiContext* Ctx; // Parent UI context (needs to be set explicitly by parent).
-
-		// Main Input State
-		// (this block used to be written by backend, since 1.87 it is best to NOT write to those directly, call the AddXXX functions above instead)
-		// (reading from those variables is fair game, as they are extremely unlikely to be moving anywhere)
-		public float2 MousePos; // Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
-		fixed byte MouseDown[5]; // Mouse buttons: 0=left, 1=right, 2=middle + extras (ImGuiMouseButton_COUNT == 5). Dear ImGui mostly uses left and right buttons. Other buttons allow us to track if the mouse is being used by your application + available to user as a convenience via IsMouse** API.
-		float MouseWheel; // Mouse wheel Vertical: 1 unit scrolls about 5 lines text. >0 scrolls Up, <0 scrolls Down. Hold SHIFT to turn vertical scroll into horizontal scroll.
-		float MouseWheelH; // Mouse wheel Horizontal. >0 scrolls Left, <0 scrolls Right. Most users don't have a mouse with a horizontal wheel, may not be filled by all backends.
-		ImGuiMouseSource MouseSource; // Mouse actual input peripheral (Mouse/TouchScreen/Pen).
-		ImGuiID MouseHoveredViewport; // (Optional) Modify using io.AddMouseViewportEvent(). With multi-viewports: viewport the OS mouse is hovering. If possible _IGNORING_ viewports with the NoInputs flag is much better (few backends can handle that). Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
-		byte KeyCtrl; // Keyboard modifier down: Control
-		byte KeyShift; // Keyboard modifier down: Shift
-		byte KeyAlt; // Keyboard modifier down: Alt
-		byte KeySuper; // Keyboard modifier down: Cmd/Super/Windows
-
-		// Other state maintained from data above + IO function calls
-		ImGuiModFlags KeyMods; // Key mods flags (any of ImGuiMod_Ctrl/ImGuiMod_Shift/ImGuiMod_Alt/ImGuiMod_Super flags, same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags. DOES NOT CONTAINS ImGuiMod_Shortcut which is pretranslated). Read-only, updated by NewFrame()
-		KeysDataArray KeysData; // Key state for all known keys. Use IsKeyXXX() functions to access this.
-		byte WantCaptureMouseUnlessPopupClose; // Alternative to WantCaptureMouse: (WantCaptureMouse == true && WantCaptureMouseUnlessPopupClose == false) when a click over void is expected to close a popup.
-		float2 MousePosPrev; // Previous mouse position (note that MouseDelta is not necessary == MousePos-MousePosPrev, in case either position is invalid)
-		MouseClickedPosArray MouseClickedPos; // Position at time of clicking
-		fixed double MouseClickedTime[5]; // Time of last click (used to figure out double-click)
-		fixed byte MouseClicked[5]; // Mouse button went from !Down to Down (same as MouseClickedCount[x] != 0)
-		fixed byte MouseDoubleClicked[5]; // Has mouse button been double-clicked? (same as MouseClickedCount[x] == 2)
-		fixed ushort MouseClickedCount[5]; // == 0 (not clicked), == 1 (same as MouseClicked[]), == 2 (double-clicked), == 3 (triple-clicked) etc. when going from !Down to Down
-		fixed ushort MouseClickedLastCount[5]; // Count successive number of clicks. Stays valid after mouse release. Reset after another click is done.
-		fixed byte MouseReleased[5]; // Mouse button went from Down to !Down
-		fixed byte MouseDownOwned[5]; // Track if button was clicked inside a dear imgui window or over void blocked by a popup. We don't request mouse capture from the application if click started outside ImGui bounds.
-		fixed byte MouseDownOwnedUnlessPopupClose[5]; // Track if button was clicked inside a dear imgui window.
-		byte MouseWheelRequestAxisSwap; // On a non-Mac system, holding SHIFT requests WheelY to perform the equivalent of a WheelX event. On a Mac system this is already enforced by the system.
-		fixed float MouseDownDuration[5]; // Duration the mouse button has been down (0.0f == just clicked)
-		fixed float MouseDownDurationPrev[5]; // Previous time the mouse button has been down
-		MouseClickedPosArray MouseDragMaxDistanceAbs; // Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
-		fixed float MouseDragMaxDistanceSqr[5]; // Squared maximum distance of how much mouse has traveled from the clicking point (used for moving thresholds)
-		float PenPressure; // Touch/Pen pressure (0.0f to 1.0f, should be >0.0f only when MouseDown[0] == true). Helper storage currently unused by Dear ImGui.
-		byte AppFocusLost; // Only modify via AddFocusEvent()
-		byte AppAcceptingEvents; // Only modify via SetAppAcceptingEvents()
-		byte BackendUsingLegacyKeyArrays; // -1: unknown, 0: using AddKeyEvent(), 1: using legacy io.KeysDown[]
-		byte BackendUsingLegacyNavInputArray; // 0: using AddKeyAnalogEvent(), 1: writing to legacy io.NavInputs[] directly
-		ushort InputQueueSurrogate; // For AddInputCharacterUTF16()
-		ImVector<ImWchar> InputQueueCharacters; // Queue of _characters_ input (obtained by platform backend). Fill using AddInputCharacter() helper.
-
-		// IMGUI_API   ImGuiIO();
 	};
 
 // Load and rasterize multiple TTF/OTF fonts into a same texture. The font atlas will build a single texture holding:
@@ -916,7 +417,7 @@ namespace com.daxode.imgui
 //  - Call GetTexDataAsAlpha8() or GetTexDataAsRGBA32() to build and retrieve pixels data.
 //  - Upload the pixels data into a texture within your graphics system (see imgui_impl_xxxx.cpp examples)
 //  - Call SetTexID(my_tex_id); and pass the pointer/identifier to your texture in a format natural to your graphics API.
-//    This value will be passed back to you during rendering to identify the texture. Read FAQ entry about ImTextureID for more details.
+//    This value will be passed back to you during rendering to identify the texture. Read FAQ entry about UnityObjRef<Texture2D> for more details.
 // Common pitfalls:
 // - If you pass a 'glyph_ranges' array to AddFont*** functions, you need to make sure that your array persist up until the
 //   atlas is build (when calling GetTexData*** or Build()). We only copy the pointer, not the data.
@@ -924,7 +425,7 @@ namespace com.daxode.imgui
 //   You can set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed,
 // - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
 // - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
-	public unsafe struct ImFontAtlas
+	unsafe partial struct ImFontAtlas
 	{
 		// ImFont*           AddFont(const ImFontConfig* font_cfg);
 		[DllImport("cimgui")]
@@ -971,7 +472,7 @@ namespace com.daxode.imgui
 
 		internal bool IsBuilt() => Fonts.Size > 0 && TexReady; // Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
 
-		public void SetTexID(ImTextureID id)
+		public void SetTexID(UnityObjRef<Texture2D> id)
 		{
 			TexID = id;
 		}
@@ -1012,185 +513,7 @@ namespace com.daxode.imgui
 		// [Internal]
 		// IMGUI_API void              CalcCustomRectUV(const ImFontAtlasCustomRect* rect, ImVec2* out_uv_min, ImVec2* out_uv_max) const;
 		// IMGUI_API bool              GetMouseCursorTexData(ImGuiMouseCursor cursor, ImVec2* out_offset, ImVec2* out_size, ImVec2 out_uv_border[2], ImVec2 out_uv_fill[2]);
-
-		//-------------------------------------------
-		// Members
-		//-------------------------------------------
-
-		ImFontAtlasFlags Flags; // Build flags (see )
-		ImTextureID TexID; // User data to refer to the texture once it has been uploaded to user's graphic systems. It is passed back to you during rendering via the ImDrawCmd structure.
-		int TexDesiredWidth; // Texture width desired by user before Build(). Must be a power-of-two. If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
-		int TexGlyphPadding; // Padding between glyphs within texture in pixels. Defaults to 1. If your rendering method doesn't rely on bilinear filtering you may set this to 0 (will also need to set AntiAliasedLinesUseTex = false).
-		bool Locked; // Marked as Locked by ImGui::NewFrame() so attempt to modify the atlas will assert.
-		void* UserData; // Store your own atlas related user-data (if e.g. you have multiple font atlas).
-
-		// [Internal]
-		// NB: Access texture data via GetTexData*() calls! Which will setup a default font for you.
-		bool TexReady; // Set when texture was built matching current font input
-		bool TexPixelsUseColors; // Tell whether our texture data is known to use colors (rather than just alpha channel), in order to help backend select a format.
-		byte* TexPixelsAlpha8; // 1 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight
-		uint* TexPixelsRGBA32; // 4 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
-		int TexWidth; // Texture width calculated during Build().
-		int TexHeight; // Texture height calculated during Build().
-		float2 TexUvScale; // = (1.0f/TexWidth, 1.0f/TexHeight)
-		float2 TexUvWhitePixel; // Texture coordinates to a white pixel
-		public ImVector<Ptr<ImFont>> Fonts; // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font. // ImFont*
-		ImVectorRaw CustomRects; // Rectangles for packing custom texture data into the atlas. // ImFontAtlasCustomRect
-		ImVector<ImFontConfig> ConfigData; // Configuration data
-		TexUvLinesArray TexUvLines; // UVs for baked anti-aliased lines
-
-		// [Internal] Font builder
-		void* FontBuilderIO; // Opaque interface to a font builder (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE). // ImFontBuilderIO
-		uint FontBuilderFlags; // Shared flags (for all fonts) for custom font builder. THIS IS BUILD IMPLEMENTATION DEPENDENT. Per-font override is also available in ImFontConfig.
-
-		// [Internal] Packing data
-		int PackIdMouseCursors; // Custom texture rectangle ID for white pixel and mouse cursors
-		int PackIdLines; // Custom texture rectangle ID for baked anti-aliased lines
-
-		// [Obsolete]
-		//typedef ImFontAtlasCustomRect    CustomRect;         // OBSOLETED in 1.72+
-		//typedef ImFontGlyphRangesBuilder GlyphRangesBuilder; // OBSOLETED in 1.67+
-		public const int IM_DRAWLIST_TEX_LINES_WIDTH_MAX = 63;
 	};
-
-//-----------------------------------------------------------------------------
-// [SECTION] Font API (ImFontConfig, ImFontGlyph, ImFontAtlasFlags, ImFontAtlas, ImFontGlyphRangesBuilder, ImFont)
-//-----------------------------------------------------------------------------
-	public unsafe struct ImFontConfig
-	{
-		void* FontData; //          // TTF/OTF data
-		int FontDataSize; //          // TTF/OTF data size
-		bool FontDataOwnedByAtlas; // true     // TTF/OTF data ownership taken by the container ImFontAtlas (will delete memory itself).
-		int FontNo; // 0        // Index of font within TTF/OTF file
-		public float SizePixels; //          // Size in pixels for rasterizer (more or less maps to the resulting font height).
-		int OversampleH; // 2        // Rasterize at higher quality for sub-pixel positioning. Note the difference between 2 and 3 is minimal. You can reduce this to 1 for large glyphs save memory. Read https://github.com/nothings/stb/blob/master/tests/oversample/README.md for details.
-		int OversampleV; // 1        // Rasterize at higher quality for sub-pixel positioning. This is not really useful as we don't use sub-pixel positions on the Y axis.
-		bool PixelSnapH; // false    // Align every glyph to pixel boundary. Useful e.g. if you are merging a non-pixel aligned font with the default font. If enabled, you can set OversampleH/V to 1.
-		float2 GlyphExtraSpacing; // 0, 0     // Extra spacing (in pixels) between glyphs. Only X axis is supported for now.
-		float2 GlyphOffset; // 0, 0     // Offset all glyphs from this font input.
-		ImWchar* GlyphRanges; // NULL     // THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE. Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list).
-		float GlyphMinAdvanceX; // 0        // Minimum AdvanceX for glyphs, set Min to align font icons, set both Min/Max to enforce mono-space font
-		float GlyphMaxAdvanceX; // FLT_MAX  // Maximum AdvanceX for glyphs
-		bool MergeMode; // false    // Merge into previous ImFont, so you can combine multiple inputs font into one ImFont (e.g. ASCII font + icons + Japanese glyphs). You may want to use GlyphOffset.y when merge font of different heights.
-		uint FontBuilderFlags; // 0        // Settings for custom font builder. THIS IS BUILDER IMPLEMENTATION DEPENDENT. Leave as zero if unsure.
-		float RasterizerMultiply; // 1.0f     // Linearly brighten (>1.0f) or darken (<1.0f) font output. Brightening small fonts may be a good workaround to make them more readable. This is a silly thing we may remove in the future.
-		float RasterizerDensity; // 1.0f     // DPI scale for rasterization, not altering other font metrics: make it easy to swap between e.g. a 100% and a 400% fonts for a zooming display. IMPORTANT: If you increase this it is expected that you increase font scale accordingly, otherwise quality may look lowered.
-		ImWchar EllipsisChar; // -1       // Explicitly specify unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
-
-		// [Internal]
-		fixed char Name[40]; // Name (strictly to ease debugging)
-		ImFont* DstFont;
-
-		// IMGUI_API ImFontConfig();
-
-		public static unsafe ImFontConfig DefaultFontConfig()
-		{
-			ImFontConfig config = new ImFontConfig
-			{
-				FontDataOwnedByAtlas = true,
-				OversampleH = 2,
-				OversampleV = 1,
-				GlyphMaxAdvanceX = float.MaxValue,
-				RasterizerMultiply = 5.0f,
-				RasterizerDensity = 5.0f,
-				EllipsisChar = new ImWchar { Value = (uint)(sizeof(ImWchar) - 1) },
-			};
-			return config;
-		}
-	};
-
-// Font runtime data and rendering
-// ImFontAtlas automatically loads a default embedded font for you when you call GetTexDataAsAlpha8() or GetTexDataAsRGBA32().
-	public unsafe struct ImFont
-	{
-		// Members: Hot ~20/24 bytes (for CalcTextSize)
-		ImVector<float> IndexAdvanceX; // 12-16 // out //            // Sparse. Glyphs->AdvanceX in a directly indexable way (cache-friendly for CalcTextSize functions which only this this info, and are often bottleneck in large UI).
-		float FallbackAdvanceX; // 4     // out // = FallbackGlyph->AdvanceX
-		float FontSize; // 4     // in  //            // Height of characters/line, set during loading (don't change after loading)
-
-		// Members: Hot ~28/40 bytes (for CalcTextSize + render loop)
-		ImVector<ImWchar> IndexLookup; // 12-16 // out //            // Sparse. Index glyphs by Unicode code-point.
-		ImVectorRaw Glyphs; // 12-16 // out //            // All glyphs. // ImFontGlyph
-		void* FallbackGlyph; // 4-8   // out // = FindGlyph(FontFallbackChar) // ImFontGlyph
-
-		// Members: Cold ~32/40 bytes
-		ImFontAtlas* ContainerAtlas; // 4-8   // out //            // What we has been loaded into
-		void* ConfigData; // 4-8   // in  //            // Pointer within ContainerAtlas->ConfigData // ImFontConfig
-		short ConfigDataCount; // 2     // in  // ~ 1        // Number of ImFontConfig involved in creating this font. Bigger than 1 when merging multiple font sources into one ImFont.
-		ImWchar FallbackChar; // 2     // out // = FFFD/'?' // Character used if a glyph isn't found.
-		ImWchar EllipsisChar; // 2     // out // = '...'/'.'// Character used for ellipsis rendering.
-		short EllipsisCharCount; // 1     // out // 1 or 3
-		float EllipsisWidth; // 4     // out               // Width
-		float EllipsisCharStep; // 4     // out               // Step between characters when EllipsisCount > 0
-		bool DirtyLookupTables; // 1     // out //
-		float Scale; // 4     // in  // = 1.f      // Base font scale, multiplied by the per-window font scale which you can adjust with SetWindowFontScale()
-		float Ascent, Descent; // 4+4   // out //            // Ascent: distance from top to bottom of e.g. 'A' [0..FontSize]
-		int MetricsTotalSurface; // 4     // out //            // Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
-		fixed byte Used4kPagesMap[(IM_UNICODE_CODEPOINT_MAX + 1) / 4096 / 8]; // 2 bytes if ImWchar=ImWchar16, 34 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
-
-		const int IM_UNICODE_CODEPOINT_INVALID = 0xFFFD; // Invalid Unicode code point (standard value).
-#if IMGUI_USE_WCHAR32
-		const int IM_UNICODE_CODEPOINT_MAX = 0x10FFFF; // Maximum Unicode code point supported by this build.
-#else
-	const int IM_UNICODE_CODEPOINT_MAX = 0xFFFF;     // Maximum Unicode code point supported by this build.
-#endif
-
-		// Methods
-		// IMGUI_API const ImFontGlyph*FindGlyph(ImWchar c) const;
-		// IMGUI_API const ImFontGlyph*FindGlyphNoFallback(ImWchar c) const;
-		// float                       GetCharAdvance(ImWchar c) const     { return ((int)c < IndexAdvanceX.Size) ? IndexAdvanceX[(int)c] : FallbackAdvanceX; }
-		// bool                        IsLoaded() const                    { return ContainerAtlas != NULL; }
-		// const char*                 GetDebugName() const                { return ConfigData ? ConfigData->Name : "<unknown>"; }
-		//
-		// // 'max_width' stops rendering after a certain width (could be turned into a 2d size). FLT_MAX to disable.
-		// // 'wrap_width' enable automatic word-wrapping across multiple lines to fit into given width. 0.0f to disable.
-		// IMGUI_API ImVec2            CalcTextSizeA(float size, float max_width, float wrap_width, const char* text_begin, const char* text_end = NULL, const char** remaining = NULL) const; // utf8
-		// IMGUI_API const char*       CalcWordWrapPositionA(float scale, const char* text, const char* text_end, float wrap_width) const;
-		// IMGUI_API void              RenderChar(ImDrawList* draw_list, float size, const ImVec2& pos, ImU32 col, ImWchar c) const;
-		// IMGUI_API void              RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, ImU32 col, const ImVec4& clip_rect, const char* text_begin, const char* text_end, float wrap_width = 0.0f, bool cpu_fine_clip = false) const;
-		//
-		// // [Internal] Don't use!
-		// IMGUI_API void              BuildLookupTable();
-		// IMGUI_API void              ClearOutputData();
-		// IMGUI_API void              GrowIndex(int new_size);
-		// IMGUI_API void              AddGlyph(const ImFontConfig* src_cfg, ImWchar c, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, float advance_x);
-		// IMGUI_API void              AddRemapChar(ImWchar dst, ImWchar src, bool overwrite_dst = true); // Makes 'dst' character/glyph points to 'src' character/glyph. Currently needs to be called AFTER fonts have been built.
-		// IMGUI_API void              SetGlyphVisible(ImWchar c, bool visible);
-		// IMGUI_API bool              IsGlyphRangeUnused(unsigned int c_begin, unsigned int c_last);
-	};
-
-
-	[StructLayout(LayoutKind.Explicit)]
-	unsafe struct TexUvLinesArray
-	{
-		[FieldOffset(0)]
-		fixed float vals[(ImFontAtlas.IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1) * 4];
-
-		public float4 this[int index]
-			=> UnsafeUtility.ArrayElementAsRef<float4>(UnsafeUtility.AddressOf(ref this), index);
-	}
-	
-	[StructLayout(LayoutKind.Explicit)]
-	unsafe struct MouseClickedPosArray
-	{
-		[FieldOffset(0)]
-		fixed float Values[5 * 2];
-
-		public ref float2 this[int index]
-			=> ref UnsafeUtility.ArrayElementAsRef<float2>(UnsafeUtility.AddressOf(ref this), index);
-	}
-
-	[StructLayout(LayoutKind.Explicit)]
-	unsafe struct KeysDataArray
-	{
-		// ImGuiKeyData is 16 bytes. We want to store 666 keys, so we need 8KB of storage.
-		[FieldOffset(0)]
-		fixed ulong KeysData0[ImGuiKeyData.SIZE];
-		[FieldOffset(sizeof(ulong) * ImGuiKeyData.SIZE)]
-		fixed ulong KeysData1[ImGuiKeyData.SIZE];
-
-		ref KeysDataArray this[int index] => ref UnsafeUtility.ArrayElementAsRef<KeysDataArray>(UnsafeUtility.AddressOf(ref this), index);
-	}
 
 	enum ImGuiKeyNamedKey
 	{
@@ -1204,29 +527,6 @@ namespace com.daxode.imgui
 		SIZE = ImGuiKeyNamedKey.COUNT,
 		OFFSET = ImGuiKeyNamedKey.BEGIN,
 	}
-
-	struct ImGuiKeyData
-	{
-		public byte Down; // True for if key is down
-		public float DownDuration; // Duration the key has been down (<0.0f: not pressed, 0.0f: just pressed, >0.0f: time held)
-		public float DownDurationPrev; // Last frame duration the key has been down
-		public float AnalogValue; // 0.0f..1.0f for gamepad values
-
-		// [Internal] Prior to 1.87 we required user to fill io.KeysDown[512] using their own native index + the io.KeyMap[] array.
-		// We are ditching this method but keeping a legacy path for user code doing e.g. IsKeyPressed(MY_NATIVE_KEY_CODE)
-		// If you need to iterate all keys (for e.g. an input mapper) you may use NamedKey_BEGIN..NamedKey_END.
-		const int NamedKey_BEGIN = 512;
-		const int NamedKey_END = (int)ImGuiKey.COUNT;
-		const int NamedKey_COUNT = NamedKey_END - NamedKey_BEGIN;
-
-#if IMGUI_DISABLE_OBSOLETE_KEYIO
-		public const int SIZE = NamedKey_COUNT; // Size of KeysData[]: only hold named keys
-		public const int OFFSET = NamedKey_BEGIN; // Accesses to io.KeysData[] must use (key - KeysData_OFFSET) index.
-#else
-	public const int SIZE = (int)ImGuiKey.COUNT;           // Size of KeysData[]: hold legacy 0..512 keycodes + named keys
-	public const int OFFSET = 0; // Accesses to io.KeysData[] must use (key - KeysData_OFFSET) index.
-#endif
-	};
 	
 	[Flags]
 	enum ImGuiModFlags
@@ -1251,48 +551,42 @@ namespace com.daxode.imgui
 	ModCtrl = Ctrl, ModShift = Shift, ModAlt = Alt, ModSuper = Super, // Renamed in 1.89
 	//KeyPadEnter = KeypadEnter,              // Renamed in 1.87
 #endif
-	};
+	}
 
-//-----------------------------------------------------------------------------
-// [SECTION] Misc data structures (ImGuiInputTextCallbackData, ImGuiSizeCallbackData, ImGuiPayload)
-//-----------------------------------------------------------------------------
-
-// Shared state of InputText(), passed as an argument to your callback when a ImGuiInputTextFlags_Callback* flag is used.
-// The callback function should return 0 by default.
-// Callbacks (follow a flag name and see comments in ImGuiInputTextFlags_ declarations for more details)
-// - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit (note that InputText() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
-// - ImGuiInputTextFlags_CallbackAlways:      Callback on each iteration
-// - ImGuiInputTextFlags_CallbackCompletion:  Callback on pressing TAB
-// - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
-// - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
-// - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
-	public unsafe struct ImGuiInputTextCallbackData
+	[StructLayout(LayoutKind.Explicit)]
+	struct ImGuiInputEventUnion
 	{
-		ImGuiContext* Ctx; // Parent UI context
-		ImGuiInputTextFlags EventFlag; // One ImGuiInputTextFlags_Callback*    // Read-only
-		ImGuiInputTextFlags Flags; // What user passed to InputText()      // Read-only
-		void* UserData; // What user passed to InputText()      // Read-only
-
-		// Arguments for the different callback events
-		// - To modify the text buffer in a callback, prefer using the InsertChars() / DeleteChars() function. InsertChars() will take care of calling the resize callback if necessary.
-		// - If you know your edits are not going to resize the underlying buffer allocation, you may modify the contents of 'Buf[]' directly. You need to update 'BufTextLen' accordingly (0 <= BufTextLen < BufSize) and set 'BufDirty'' to true so InputText can update its internal state.
-		ImWchar EventChar; // Character input                      // Read-write   // [CharFilter] Replace character with another one, or set to zero to drop. return 1 is equivalent to setting EventChar=0;
-		ImGuiKey EventKey; // Key pressed (Up/Down/TAB)            // Read-only    // [Completion,History]
-		byte* Buf; // Text buffer                          // Read-write   // [Resize] Can replace pointer / [Completion,History,Always] Only write to pointed data, don't replace the actual pointer!
-		int BufTextLen; // Text length (in bytes)               // Read-write   // [Resize,Completion,History,Always] Exclude zero-terminator storage. In C land: == strlen(some_text), in C++ land: string.length()
-		int BufSize; // Buffer size (in bytes) = capacity+1  // Read-only    // [Resize,Completion,History,Always] Include zero-terminator storage. In C land == ARRAYSIZE(my_char_array), in C++ land: string.capacity()+1
-		byte BufDirty; // Set if you modify Buf/BufTextLen!    // Write        // [Completion,History,Always]
-		int CursorPos; //                                      // Read-write   // [Completion,History,Always]
-		int SelectionStart; //                                      // Read-write   // [Completion,History,Always] == to SelectionEnd when no selection)
-		int SelectionEnd; //                                      // Read-write   // [Completion,History,Always]
-
-		// Helper functions for text manipulation.
-		// Use those function to benefit from the CallbackResize behaviors. Calling those function reset the selection.
-		// IMGUI_API ImGuiInputTextCallbackData();
-		// IMGUI_API void      DeleteChars(int pos, int bytes_count);
-		// IMGUI_API void      InsertChars(int pos, const char* text, const char* text_end = NULL);
-		// void                SelectAll()             { SelectionStart = 0; SelectionEnd = BufTextLen; }
-		// void                ClearSelection()        { SelectionStart = SelectionEnd = BufTextLen; }
-		// bool                HasSelection() const    { return SelectionStart != SelectionEnd; }
+		[FieldOffset(0)]
+		public ImGuiInputEventMousePos MousePos; 
+		[FieldOffset(0)]
+		public ImGuiInputEventMouseWheel MouseWheel; 
+		[FieldOffset(0)]
+		public ImGuiInputEventMouseButton MouseButton; 
+		[FieldOffset(0)]
+		public ImGuiInputEventMouseViewport MouseViewport; 
+		[FieldOffset(0)]
+		public ImGuiInputEventKey Key; 
+		[FieldOffset(0)]
+		public ImGuiInputEventText Text; 
+		[FieldOffset(0)]
+		public ImGuiInputEventAppFocused AppFocused;
+	}
+	
+	[StructLayout(LayoutKind.Explicit)]
+	unsafe struct ImGuiStoragePairUnion {
+		[FieldOffset(0)]
+		public int val_i; 
+		[FieldOffset(0)]
+		public float val_f; 
+		[FieldOffset(0)]
+		public void* val_p;
+	}
+	
+	[StructLayout(LayoutKind.Explicit)]
+	unsafe struct ImGuiStyleModUnion {
+		[FieldOffset(0)]
+		public fixed int BackupInt[2]; 
+		[FieldOffset(0)]
+		public fixed float BackupFloat[2];
 	}
 }

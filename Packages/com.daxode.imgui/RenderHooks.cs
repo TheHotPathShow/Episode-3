@@ -34,7 +34,7 @@ namespace com.daxode.imgui
             texture.Apply();
             
             // Store our identifier
-            io->Fonts->SetTexID(UnsafeUtility.As<int, ImTextureID>(ref bd->FontTexture.InstanceID));
+            io->Fonts->SetTexID(bd->FontTexture);
 
             return true;
         }
@@ -61,7 +61,7 @@ namespace com.daxode.imgui
             UnsafeUtility.MemClear(bd, sizeof(RendererUserData));
             bd->LastFrameCount = -1;
             io->BackendRendererUserData = bd;
-            io->BackendRendererName = (char*) new NativeText("imgui_impl_opengl2", Allocator.Persistent).GetUnsafePtr();
+            io->BackendRendererName = new NativeText("imgui_impl_opengl2", Allocator.Persistent).GetUnsafePtr();
 
             return true;
         }

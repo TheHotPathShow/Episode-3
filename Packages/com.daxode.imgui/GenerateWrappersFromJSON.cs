@@ -31,7 +31,7 @@ namespace com.daxode.imgui
         public string name;
         public string template_type;
         public string type;
-        public int size;
+        int size;
     }
     
     public static class GenerateWrappersFromJSON
@@ -183,6 +183,7 @@ namespace com.daxode.imgui
             { "ImPool", "ImPool<T> where T : unmanaged" },
             { "ImVector", "ImVector<T> where T : unmanaged" },
             { "ImChunkStream", "ImChunkStream<T> where T : unmanaged" },
+            { "ImDrawDataBuilder_LayersArray", "ImDrawDataBuilder_LayersArray<T> where T : unmanaged" },
         };
         
         static readonly Dictionary<string, string> k_ForceTypeFieldMap = new Dictionary<string, string>
@@ -190,6 +191,18 @@ namespace com.daxode.imgui
             { "ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>", "ImBitArray" },
             { "ImVector<ImGuiDockRequest>", "ImVectorRaw" },
             { "ImVector<ImGuiDockNodeSettings>", "ImVectorRaw" },
+            { "union { ImGuiInputEventMousePos MousePos; ImGuiInputEventMouseWheel MouseWheel; ImGuiInputEventMouseButton MouseButton; ImGuiInputEventMouseViewport MouseViewport; ImGuiInputEventKey Key; ImGuiInputEventText Text; ImGuiInputEventAppFocused AppFocused;}", "ImGuiInputEventUnion union" },
+            { "union { int val_i; float val_f; void* val_p;}", "ImGuiStoragePairUnion union" },
+            { "union { int BackupInt[2]; float BackupFloat[2];}", "ImGuiStyleModUnion union" },
+        };
+        
+        static readonly HashSet<string> k_PublicTypes = new HashSet<string>
+        {
+            "ImVector",
+        };
+        static readonly HashSet<string> k_PartialTypes = new HashSet<string>
+        {
+            "ImVector",
         };
 
         struct ValueArrayInfo
@@ -198,6 +211,8 @@ namespace com.daxode.imgui
             public string type;
             public string sizeText;
         }
+        
+        
         
         static void WriteStructs(TextWriter sourceWriter, StructsAndEnums structsAndEnums, Dictionary<string, string> typedefsDictionary)
         {
@@ -210,7 +225,15 @@ namespace com.daxode.imgui
                 var structNameWithForceType = structName;
                 if (k_ForceStructMap.TryGetValue(structName, out var structNameWithForceTypeOverride))
                     structNameWithForceType = structNameWithForceTypeOverride;
-                sourceWriter.WriteLine($"\tunsafe struct {structNameWithForceType}");
+                sourceWriter.WriteLine($"\t[StructLayout(LayoutKind.Sequential)]");
+                sourceWriter.Write('\t');
+                if (k_PublicTypes.Contains(structName))
+                    sourceWriter.Write("public ");
+                sourceWriter.Write("unsafe ");
+                if (k_PartialTypes.Contains(structName))
+                    sourceWriter.Write("partial ");
+                sourceWriter.Write('\t');
+                sourceWriter.WriteLine($"struct {structNameWithForceType}");
                 sourceWriter.WriteLine("\t{");
                 foreach (var field in structFields)
                 {
@@ -293,7 +316,7 @@ namespace com.daxode.imgui
                     
                     // if Value Array
                     var fieldName = field.name;
-                    if (field.size > 0)
+                    if (field.name.EndsWith(']'))
                     {
                         var startOfArray = fieldName.IndexOf('[');
                         var sizeText = fieldName[(startOfArray + 1)..^1];
@@ -310,35 +333,42 @@ namespace com.daxode.imgui
                         fieldType = $"{structName}_{fieldName}Array";
                     }
                     
-                    if (k_ForceTypeFieldMap.TryGetValue(fieldType, out var forcedType))
-                        fieldType = forcedType;
                         
                     sourceWriter.Write($"\t\tpublic ");
-                    sourceWriter.Write($"{fieldType}");
+                    
+                    var fieldBuilder = new System.Text.StringBuilder(fieldType);
                     // add type arguments
                     if (templateType != null)
                     {
-                        sourceWriter.Write('<');
+                        fieldBuilder.Append('<');
                         for (var i = 0; i < templateTypePointerCount; i++)
-                            sourceWriter.Write("Ptr<");
-                        sourceWriter.Write(templateType);
+                            fieldBuilder.Append("Ptr<");
+                        fieldBuilder.Append(templateType);
                         for (var i = 0; i < templateTypePointerCount; i++)
-                            sourceWriter.Write('>');
-                        sourceWriter.Write('>');
+                            fieldBuilder.Append('>');
+                        fieldBuilder.Append('>');
                     }
-                    
                     for (var i = 0; i < fieldTypePointerCount; i++)
-                        sourceWriter.Write('*');
-                    sourceWriter.Write(' ');
+                        fieldBuilder.Append('*');
+                    fieldType = fieldBuilder.ToString();
+                    
+                    if (k_ForceTypeFieldMap.TryGetValue(fieldType, out var forcedType))
+                        fieldType = forcedType;
+                    
+                    sourceWriter.Write(fieldType);
+                    if (fieldName != string.Empty)
+                        sourceWriter.Write(' ');
                     sourceWriter.Write(fieldName);
                     sourceWriter.Write(';');
-                    sourceWriter.Write($" // {templateType} with {fieldTypePointerCount} field pointers and {templateTypePointerCount} template pointers");
                     sourceWriter.WriteLine();
                 }
                 sourceWriter.WriteLine("\t}\n");
                 
                 foreach (var valueArrayInfo in valueArraysToAdd)
                 {
+                    var valueArrayStructName = $"{structName}_{valueArrayInfo.name}Array";
+                    if (k_ForceStructMap.TryGetValue(valueArrayStructName, out structNameWithForceTypeOverride))
+                        valueArrayStructName = structNameWithForceTypeOverride;
                     var type = valueArrayInfo.type;
                     var sizeText = valueArrayInfo.sizeText;
                     var members = sizeText.Split('_');
@@ -347,12 +377,16 @@ namespace com.daxode.imgui
                         sizeText = string.Join("", members[..^1]) + "." + lastMember;
                     else
                         sizeText = sizeText.Replace('_', '.');
+                    if (sizeText == "CHUNKS")
+                        sizeText = "1";
+                    else if (sizeText == "(BITCOUNT+31)>>5")
+                        sizeText = "ImGuiKeyNamedKey.COUNT";
                     
                     var name = valueArrayInfo.name;
                     var typeSize = SizeOfStruct(type, structsAndEnums, typedefsDictionary);
                     
                     sourceWriter.WriteLine("\t[StructLayout(LayoutKind.Sequential)]");
-                    sourceWriter.WriteLine($"\tunsafe struct {structName}_{valueArrayInfo.name}Array");
+                    sourceWriter.WriteLine($"\tunsafe struct {valueArrayStructName}");
                     sourceWriter.WriteLine("\t{");
                     sourceWriter.WriteLine($"\t\tpublic fixed byte {name}[((int)({sizeText}))*({typeSize})];");
                     sourceWriter.WriteLine("\t}\n");

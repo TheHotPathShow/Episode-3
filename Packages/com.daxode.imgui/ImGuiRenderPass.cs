@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using com.daxode.imgui.generated;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -145,17 +144,17 @@ namespace com.daxode.imgui
                 meshData.SetVertexBufferParams(draw_data->TotalVtxCount, vertexAttributes);
 
                 // Upload vertex/index data into a single contiguous GPU buffer
-                var indexData = meshData.GetIndexData<ImDrawIdx>();
+                var indexData = meshData.GetIndexData<ushort>();
                 var vertexData = meshData.GetVertexData<ImDrawVert>();
                 var vertexDestination = (ImDrawVert*)vertexData.GetUnsafePtr();
-                var indexDestination = (ImDrawIdx*)indexData.GetUnsafePtr();
+                var indexDestination = (ushort*)indexData.GetUnsafePtr();
                 for (int n = 0; n < draw_data->CmdListsCount; n++)
                 {
                     ref var cmd_list = ref draw_data->CmdLists[n];
                     UnsafeUtility.MemCpy(vertexDestination, cmd_list.Value->VtxBuffer.Data,
                         cmd_list.Value->VtxBuffer.Size * sizeof(ImDrawVert));
                     UnsafeUtility.MemCpy(indexDestination, cmd_list.Value->IdxBuffer.Data,
-                        cmd_list.Value->IdxBuffer.Size * sizeof(ImDrawIdx));
+                        cmd_list.Value->IdxBuffer.Size * sizeof(ushort));
                     vertexDestination += cmd_list.Value->VtxBuffer.Size;
                     indexDestination += cmd_list.Value->IdxBuffer.Size;
                 }
@@ -175,14 +174,14 @@ namespace com.daxode.imgui
                 for (int cmd_i = 0; cmd_i < cmd_list.Value->CmdBuffer.Size; cmd_i++)
                 {
                     ref var pcmd = ref cmd_list.Value->CmdBuffer[cmd_i];
-                    if (pcmd.UserCallback.Value != null)
+                    if (pcmd.UserCallback != null)
                     {
                         // User callback, registered via ImDrawList::AddCallback()
                         // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
-                        if (pcmd.UserCallback.Value == ImDrawCallback.ResetRenderState)
+                        if (pcmd.UserCallback == ImDrawCallback.ResetRenderState)
                         {} // ImGui_ImplVulkan_SetupRenderState(draw_data, fb_width, fb_height);
                         else
-                            pcmd.UserCallback.Value(cmd_list.Value, (ImDrawCmd*)UnsafeUtility.AddressOf(ref pcmd));
+                            pcmd.UserCallback(cmd_list.Value, (ImDrawCmd*)UnsafeUtility.AddressOf(ref pcmd));
                     }
                     else
                     {
@@ -196,11 +195,10 @@ namespace com.daxode.imgui
                         if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
                             continue;
                         
-                        var textureId = pcmd.GetTexID();
                         additionalData->Add(new DrawCmdData
                         {
                             scissor = new Rect(clipMin, clipMax - clipMin),
-                            texture = UnsafeUtility.As<ImTextureID, UnityObjRef<Texture2D>>(ref textureId),
+                            texture = pcmd.GetTexID(),
                         });
 
                         // Draw
@@ -230,7 +228,7 @@ namespace com.daxode.imgui
         public unsafe void Dispose()
         {
             var drawData = ImGui.GetDrawData();
-            if (drawData != null && drawData->Valid > 0 && ImGui.GetIO()->Fonts->IsBuilt())
+            if (drawData != null && drawData->Valid && ImGui.GetIO()->Fonts->IsBuilt())
             {
                 ImGui.NewFrame();
                 ImGui.Render();

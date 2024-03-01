@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using AOT;
-using com.daxode.imgui.generated;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -312,7 +311,7 @@ namespace com.daxode.imgui
             var bd = (PlatformData*) UnsafeUtility.Malloc(sizeof(PlatformData), UnsafeUtility.AlignOf<PlatformData>(), Allocator.Persistent);
             UnsafeUtility.MemClear(bd, sizeof(PlatformData));
             io->BackendPlatformUserData = bd;
-            io->BackendPlatformName = (char*) new NativeText("imgui_impl_glfw", Allocator.Persistent).GetUnsafePtr();
+            io->BackendPlatformName = new NativeText("imgui_impl_glfw", Allocator.Persistent).GetUnsafePtr();
             io->BackendFlags |= ImGuiBackendFlags.HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
             io->BackendFlags |= ImGuiBackendFlags.HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
             io->BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
@@ -324,8 +323,8 @@ namespace com.daxode.imgui
 
             GCDefeat_SetClipboardFunc = SetClipboardText;
             GCDefeat_GetClipboardFunc = GetClipboardText;
-            io->SetClipboardTextFn = (delegate* unmanaged[Cdecl]<void*, char*, void>) Marshal.GetFunctionPointerForDelegate(GCDefeat_SetClipboardFunc);
-            io->GetClipboardTextFn = (delegate* unmanaged[Cdecl]<void*, char*>) Marshal.GetFunctionPointerForDelegate(GCDefeat_GetClipboardFunc);
+            io->SetClipboardTextFn = (delegate* unmanaged[Cdecl]<IntPtr, byte*, void>) Marshal.GetFunctionPointerForDelegate(GCDefeat_SetClipboardFunc);
+            io->GetClipboardTextFn = (delegate* unmanaged[Cdecl]<IntPtr, char*>) Marshal.GetFunctionPointerForDelegate(GCDefeat_GetClipboardFunc);
             io->ClipboardUserData = (void*)bd->Window;
             
             return true;
