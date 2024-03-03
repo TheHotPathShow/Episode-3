@@ -1,3 +1,4 @@
 [submodule "Packages/com.daxode.imgui"]
 	path = Packages/com.daxode.imgui
+	branch = docking
 	url = https://github.com/Daxode/com.daxode.imgui.git
