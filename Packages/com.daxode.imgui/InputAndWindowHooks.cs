@@ -311,7 +311,7 @@ namespace com.daxode.imgui
             var bd = (PlatformData*) UnsafeUtility.Malloc(sizeof(PlatformData), UnsafeUtility.AlignOf<PlatformData>(), Allocator.Persistent);
             UnsafeUtility.MemClear(bd, sizeof(PlatformData));
             io->BackendPlatformUserData = bd;
-            io->BackendPlatformName = new NativeText("imgui_impl_glfw", Allocator.Persistent).GetUnsafePtr();
+            io->BackendPlatformName = new NativeText("Unity Input and Window", Allocator.Persistent).GetUnsafePtr();
             io->BackendFlags |= ImGuiBackendFlags.HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
             io->BackendFlags |= ImGuiBackendFlags.HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
             io->BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;

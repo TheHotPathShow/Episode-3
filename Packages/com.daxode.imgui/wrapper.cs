@@ -1,4 +1,3 @@
-#define IMGUI_USE_WCHAR32
 #define IMGUI_DISABLE_OBSOLETE_KEYIO
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
@@ -19,8 +18,8 @@ namespace com.daxode.imgui
 
 	static class ImGui
 	{
-		public const string VERSION = "1.90.3";
-		const int VERSION_NUM = 19030;
+		public const string VERSION = "1.90.5 WIP";
+		const int VERSION_NUM = 19042;
 		const bool HAS_TABLE = true;
 
 
@@ -296,14 +295,6 @@ namespace com.daxode.imgui
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct ImDrawVert
-	{
-		public float2 pos;
-		public uint col;
-		public float2 uv;
-	};
-
-	[StructLayout(LayoutKind.Sequential)]
 	public unsafe struct Ptr<T> where T : unmanaged
 	{
 		public T* Value;
@@ -333,6 +324,10 @@ namespace com.daxode.imgui
 	{
 		public UnityObjRef<Texture2D> GetTexID() => TextureId;
 	};
+	
+	public struct ImFontBuilderIO{}
+	public struct ImDrawListSharedData{}
+	public struct ImGuiContext{}
 
 	unsafe partial struct ImGuiIO
 	{
@@ -470,7 +465,7 @@ namespace com.daxode.imgui
 		public void GetTexDataAsRGBA32(out byte* out_pixels, out int out_width, out int out_height, out int out_bytes_per_pixel)
 			=> ImFontAtlas_GetTexDataAsRGBA32((ImFontAtlas*)UnsafeUtility.AddressOf(ref this), out out_pixels, out out_width, out out_height, out out_bytes_per_pixel);
 
-		internal bool IsBuilt() => Fonts.Size > 0 && TexReady; // Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
+		internal bool IsBuilt() => Fonts.Size > 0 && TexReady>0; // Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
 
 		public void SetTexID(UnityObjRef<Texture2D> id)
 		{
@@ -551,25 +546,6 @@ namespace com.daxode.imgui
 	ModCtrl = Ctrl, ModShift = Shift, ModAlt = Alt, ModSuper = Super, // Renamed in 1.89
 	//KeyPadEnter = KeypadEnter,              // Renamed in 1.87
 #endif
-	}
-
-	[StructLayout(LayoutKind.Explicit)]
-	struct ImGuiInputEventUnion
-	{
-		[FieldOffset(0)]
-		public ImGuiInputEventMousePos MousePos; 
-		[FieldOffset(0)]
-		public ImGuiInputEventMouseWheel MouseWheel; 
-		[FieldOffset(0)]
-		public ImGuiInputEventMouseButton MouseButton; 
-		[FieldOffset(0)]
-		public ImGuiInputEventMouseViewport MouseViewport; 
-		[FieldOffset(0)]
-		public ImGuiInputEventKey Key; 
-		[FieldOffset(0)]
-		public ImGuiInputEventText Text; 
-		[FieldOffset(0)]
-		public ImGuiInputEventAppFocused AppFocused;
 	}
 	
 	[StructLayout(LayoutKind.Explicit)]

@@ -59,6 +59,8 @@ namespace com.daxode.imgui
             {
                 if (value.StartsWith("struct "))
                     listToRemove.Add(key);
+                if (structsAndEnums.enums.ContainsKey(key+"_"))
+                    listToRemove.Add(key);
             }
             foreach (var key in listToRemove)
                 typedefsDictionary.Remove(key);
@@ -81,7 +83,7 @@ namespace com.daxode.imgui
                 
                 
                 // Write the namespace
-                sourceWriter.WriteLine("namespace com.daxode.imgui.generated");
+                sourceWriter.WriteLine("namespace com.daxode.imgui");
                 sourceWriter.WriteLine("{");
                 
                 // Constants
@@ -108,7 +110,7 @@ namespace com.daxode.imgui
         static readonly Dictionary<string, string> k_TypeMap = new Dictionary<string, string>
         {
             // basic types
-            { "bool", "bool" },
+            { "bool", "byte" },
             { "char", "byte" },
             { "double", "double" },
             { "float", "float" },
@@ -138,6 +140,7 @@ namespace com.daxode.imgui
             { "ImVec2ih", "Unity.Mathematics.int2" },
             { "ImVec4", "Unity.Mathematics.float4" },
             { "ImColor", "UnityEngine.Color" },
+            { "ImTextureID", "UnityObjRef<UnityEngine.Texture2D>" },
             { "FILE", "void" },
             
             // { "ImU8", "byte"},
@@ -199,10 +202,14 @@ namespace com.daxode.imgui
         static readonly HashSet<string> k_PublicTypes = new HashSet<string>
         {
             "ImVector",
+            
         };
         static readonly HashSet<string> k_PartialTypes = new HashSet<string>
         {
             "ImVector",
+            "ImDrawCmd",
+            "ImFontAtlas",
+            "ImGuiIO"
         };
 
         struct ValueArrayInfo
@@ -211,8 +218,6 @@ namespace com.daxode.imgui
             public string type;
             public string sizeText;
         }
-        
-        
         
         static void WriteStructs(TextWriter sourceWriter, StructsAndEnums structsAndEnums, Dictionary<string, string> typedefsDictionary)
         {
@@ -232,7 +237,6 @@ namespace com.daxode.imgui
                 sourceWriter.Write("unsafe ");
                 if (k_PartialTypes.Contains(structName))
                     sourceWriter.Write("partial ");
-                sourceWriter.Write('\t');
                 sourceWriter.WriteLine($"struct {structNameWithForceType}");
                 sourceWriter.WriteLine("\t{");
                 foreach (var field in structFields)
@@ -383,7 +387,7 @@ namespace com.daxode.imgui
                         sizeText = "ImGuiKeyNamedKey.COUNT";
                     
                     var name = valueArrayInfo.name;
-                    var typeSize = SizeOfStruct(type, structsAndEnums, typedefsDictionary);
+                    var typeSize = type == "ImGuiKeyData" ? "16" : SizeOfStruct(type, structsAndEnums, typedefsDictionary);
                     
                     sourceWriter.WriteLine("\t[StructLayout(LayoutKind.Sequential)]");
                     sourceWriter.WriteLine($"\tunsafe struct {valueArrayStructName}");

@@ -96,7 +96,7 @@ namespace com.daxode.imgui
                         ImGui.SameLine();
                     ImGui.Button($"No.{i} Button");
                 }
-
+            
                 // Display framerate
                 unsafe
                 {
@@ -119,7 +119,8 @@ namespace com.daxode.imgui
                     guiData.showAnotherWindow = false;
                 ImGui.Text("Some text: ");
                 ImGui.SameLine();
-                ImGui.InputTextWithHint("", "My Fancy Hint", ref guiData.inputText);
+                if (ImGui.InputTextWithHint("##InputWindow", "My Fancy Hint", ref guiData.inputText))
+                    Debug.Log($"Input Text: {guiData.inputText}");
                 ImGui.End();
             }
         }

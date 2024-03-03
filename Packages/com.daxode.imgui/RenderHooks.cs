@@ -46,7 +46,7 @@ namespace com.daxode.imgui
         {
             var bd = GetBackendData();
             Debug.Assert(bd != null, "Did you call Init()?");
-            if (bd->FontTexture.InstanceID == 0)
+            if (!bd->FontTexture.IsValid)
                 CreateDeviceObjects();
             bd->LastFrameCount = Time.renderedFrameCount;
         }
@@ -61,7 +61,7 @@ namespace com.daxode.imgui
             UnsafeUtility.MemClear(bd, sizeof(RendererUserData));
             bd->LastFrameCount = -1;
             io->BackendRendererUserData = bd;
-            io->BackendRendererName = new NativeText("imgui_impl_opengl2", Allocator.Persistent).GetUnsafePtr();
+            io->BackendRendererName = new NativeText("Unity Renderer", Allocator.Persistent).GetUnsafePtr();
 
             return true;
         }
@@ -70,7 +70,7 @@ namespace com.daxode.imgui
         {
             var io = ImGui.GetIO();
             var bd = GetBackendData();
-            if (bd->FontTexture.InstanceID == 0) 
+            if (!bd->FontTexture.IsValid) 
                 return;
 #if UNITY_EDITOR
             UnityEngine.Object.DestroyImmediate(bd->FontTexture.Value);

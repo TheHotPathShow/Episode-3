@@ -64,6 +64,7 @@ namespace com.daxode.imgui
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;     // Enable Keyboard Controls
             io->ConfigFlags |= ImGuiConfigFlags.NavEnableGamepad;      // Enable Gamepad Controls
             io->ConfigFlags |= ImGuiConfigFlags.DockingEnable;         // Enable Docking
+            io->Fonts->FontBuilderFlags |= (1 << 8);
             
             // Setup Dear ImGui style
             ImGui.StyleColorsDark(out _);
@@ -71,8 +72,30 @@ namespace com.daxode.imgui
             // Setup Platform/Renderer backends
             InputAndWindowHooks.Init();
             RenderHooks.Init();
-            io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 20.0f);
-            // io->Fonts->AddFontDefault();
+            unchecked
+            {
+                // Use comic sans as default font with seguiemj as fallback emoji font
+                io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 32.0f);
+                var fontConfig = new ImFontConfig
+                {
+                    FontDataOwnedByAtlas = 1,
+                    OversampleH = 2,
+                    OversampleV = 1,
+                    GlyphMaxAdvanceX = float.MaxValue,
+                    RasterizerMultiply = 1.0f,
+                    RasterizerDensity = 1.0f,
+                    EllipsisChar = (uint)-1,
+                    MergeMode = 1, // Merge all characters into one texture
+                    FontBuilderFlags = (1 << 8) // Sets color emoji
+                };
+                var ranges = new uint[] { 0x1, 0x1FFFF, 0};
+                fixed(uint* p = ranges) 
+                    io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\seguiemj.ttf", 32.0f, &fontConfig, p);
+                
+                // io->Fonts->AddFontFromFileTTF(@"C:\Windows\Fonts\comic.ttf", 32.0f, &fontConfig);
+                // io->Fonts->AddFontDefault(&fontConfig);
+            }
+            
         }
 
         public override unsafe void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -228,7 +251,7 @@ namespace com.daxode.imgui
         public unsafe void Dispose()
         {
             var drawData = ImGui.GetDrawData();
-            if (drawData != null && drawData->Valid && ImGui.GetIO()->Fonts->IsBuilt())
+            if (drawData != null && drawData->Valid>0 && ImGui.GetIO()->Fonts->IsBuilt())
             {
                 ImGui.NewFrame();
                 ImGui.Render();
