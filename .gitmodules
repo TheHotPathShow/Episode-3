@@ -1,0 +1,3 @@
+[submodule "Packages/com.daxode.imgui"]
+	path = Packages/com.daxode.imgui
+	url = https://github.com/Daxode/com.daxode.imgui.git
